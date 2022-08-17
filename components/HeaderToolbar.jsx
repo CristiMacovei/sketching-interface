@@ -2,9 +2,16 @@ import React from 'react';
 
 import Button from './Button';
 
-export default function HeaderToolbar() {
+export default function HeaderToolbar(props) {
+  function handleLineToolClick() {
+    console.log('Line tool clicked');
+
+    if (typeof props.fSetCanvasSelecting === 'function') {
+      props.fSetCanvasSelecting('line-first-point');
+    }
+  }
   return (
-    <div className='flex mx-auto w-4/5 items-center justify-between'>
+    <div className='flex items-center justify-between w-4/5 mx-auto'>
       {/* left  */}
       <div>
         <Button text='Export Sketch' />
@@ -13,7 +20,7 @@ export default function HeaderToolbar() {
       {/* middle buttons */}
       <div>
         <div className='flex flex-row items-center justify-center'>
-          <Button text='/' />
+          <Button text='/' fClick={handleLineToolClick} />
         </div>
       </div>
 
