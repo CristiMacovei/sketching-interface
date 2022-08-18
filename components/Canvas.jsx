@@ -9,6 +9,8 @@ export default function Canvas(props) {
   const [sMouseX, setMouseX] = useState(null);
   const [sMouseY, setMouseY] = useState(null);
 
+  const [sSnappedPoint, setSnappedPoint] = useState(null);
+
   const rMainCanvasDiv = useRef(null);
 
   useEffect(() => {
@@ -18,10 +20,57 @@ export default function Canvas(props) {
     setCanvasTop(Math.round(boundingRect.top));
   }, []);
 
-  function handleMouseMove(evt) {
-    setMouseX(evt.clientX - sCanvasLeft);
-    setMouseY(evt.clientY - sCanvasTop);
+  function snapToPoint(x, y, pointSet, maxDelta = 10) {
+    if (!pointSet) {
+      return;
+    }
 
+    const closestPoint = pointSet
+      .map((point) => {
+        const xDelta = Math.abs(point.x - x);
+        const yDelta = Math.abs(point.y - y);
+
+        const deltaSquared = xDelta * xDelta + yDelta * yDelta;
+
+        return [point, deltaSquared];
+      })
+      .filter(([point, deltaSquared]) => deltaSquared < maxDelta * maxDelta)
+      .sort(
+        ([pointA, deltaSquaredA], [pointB, deltaSquaredB]) =>
+          deltaSquaredA - deltaSquaredB
+      )
+      .map(([point, deltaSquared]) => point)?.[0];
+
+    if (closestPoint) {
+      setSnappedPoint(closestPoint);
+
+      return closestPoint;
+    } else {
+      setSnappedPoint(null);
+    }
+  }
+
+  function handleMouseMove(evt) {
+    const instantX = evt.clientX - sCanvasLeft;
+    const instantY = evt.clientY - sCanvasTop;
+
+    const closestPoint = snapToPoint(
+      instantX,
+      instantY,
+      props.sSavedPoints,
+      20
+    );
+
+    setMouseX(instantX);
+    setMouseY(instantY);
+
+    console.log(`Trying to snap from ${sMouseX}, ${sMouseY}`);
+    console.log(
+      `To ${props.sSavedPoints.map((point) => `${point.x}, ${point.y}`)}`
+    );
+    console.log(`Closest point is ${closestPoint?.x}, ${closestPoint?.y}`);
+
+    // save cached line if we're selecting the second point
     if (props.sSelecting === 'line-second-point') {
       const newCachedLines = [
         {
@@ -30,8 +79,8 @@ export default function Canvas(props) {
             y: props.sCachedPoints.tools.line[0].y
           },
           second: {
-            x: evt.clientX - sCanvasLeft,
-            y: evt.clientY - sCanvasTop
+            x: closestPoint ? closestPoint.x : instantX,
+            y: closestPoint ? closestPoint.y : instantY
           }
         }
       ];
@@ -50,8 +99,10 @@ export default function Canvas(props) {
           ...props.sCachedPoints.tools,
           line: [
             {
-              x: sMouseX,
-              y: sMouseY
+              x: sSnappedPoint ? sSnappedPoint.x : sMouseX,
+              y: sSnappedPoint ? sSnappedPoint.y : sMouseY,
+              snapped: sSnappedPoint ? true : false,
+              snappedPoint: sSnappedPoint
             }
           ]
         }
@@ -71,19 +122,33 @@ export default function Canvas(props) {
       const name1 = `A-${initialLen + 1}`;
       const name2 = `A-${initialLen + 2}`;
 
-      const firstPoint = {
+      let firstPoint = {
         x: cachedFirstPoint.x,
         y: cachedFirstPoint.y,
-        name: name1
+        name: name1,
+        snapped: cachedFirstPoint.snapped
       };
 
-      const secondPoint = {
-        x: sMouseX,
-        y: sMouseY,
-        name: name2
+      let secondPoint = {
+        x: sSnappedPoint ? sSnappedPoint.x : sMouseX,
+        y: sSnappedPoint ? sSnappedPoint.y : sMouseY,
+        name: name2,
+        snapped: sSnappedPoint ? true : false
       };
 
-      const newSavedPoints = [...props.sSavedPoints, firstPoint, secondPoint];
+      const newSavedPoints = [...props.sSavedPoints];
+
+      if (!firstPoint.snapped) {
+        newSavedPoints.push(firstPoint);
+      } else {
+        firstPoint = cachedFirstPoint.snappedPoint;
+      }
+
+      if (!secondPoint.snapped) {
+        newSavedPoints.push(secondPoint);
+      } else {
+        secondPoint = sSnappedPoint;
+      }
 
       const newSavedLines = [
         ...props.sSavedLines,
@@ -217,7 +282,7 @@ export default function Canvas(props) {
             <div
               //  todo add name popup
               key={`saved-point-${index}`}
-              className='absolute w-1 h-1 bg-red-600 rounded-full'
+              className='absolute w-2 h-2 bg-red-600 rounded-full'
               style={{ top: point.y, left: point.x }}
             />
           );
@@ -268,16 +333,16 @@ export default function Canvas(props) {
         <div
           className='absolute w-1 h-1 bg-red-500 rounded-full'
           style={{
-            top: sMouseY,
-            left: sMouseX
+            top: sSnappedPoint ? sSnappedPoint.y : sMouseY,
+            left: sSnappedPoint ? sSnappedPoint.x : sMouseX
           }}
         />
       ) : (
         <div
           className='absolute w-1 h-1 bg-red-500 rounded-full'
           style={{
-            top: sMouseY,
-            left: sMouseX
+            top: sSnappedPoint ? sSnappedPoint.y : sMouseY,
+            left: sSnappedPoint ? sSnappedPoint.x : sMouseX
           }}
         />
       )}

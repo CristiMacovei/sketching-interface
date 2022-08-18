@@ -99,28 +99,35 @@ export default function Line(props) {
         </span>
       </div>
 
-      <span
-        className='absolute left-0 w-full text-xs text-opacity-50'
-        onClick={() => setIsAngleInputVisible(true)}
+      <div
+        className='absolute top-0.5 left-0 z-10 w-full text-base text-center text-opacity-50'
         style={{
-          transform: Math.abs(sAngle) > 90 ? 'rotate(180deg)' : '',
-          textAlign: Math.abs(sAngle) > 90 ? 'right' : 'left'
+          transform: Math.abs(sAngle) > 90 ? 'rotate(180deg)' : ''
         }}
       >
-        {sAngle.toFixed(2)} deg
-        <input
-          onBlur={() => setIsAngleInputVisible(false)}
-          type='number'
-          step={1}
-          className='absolute bottom-0 left-0 w-20 bg-gray-100 outline-none caret-black'
-          ref={refAngleInput}
-          onChange={handleAngleChange}
+        <span
+          className='relative'
+          onClick={() => setIsAngleInputVisible(true)}
           style={{
-            display: sIsAngleInputVisible ? 'block' : 'none',
-            maxWidth: '200%'
+            transform: Math.abs(sAngle) > 90 ? 'rotate(180deg)' : '',
+            textAlign: Math.abs(sAngle) > 90 ? 'right' : 'left'
           }}
-        />
-      </span>
+        >
+          {sAngle.toFixed(2)} deg
+          <input
+            onBlur={() => setIsAngleInputVisible(false)}
+            type='number'
+            step={1}
+            className='absolute bottom-0 left-0 w-20 bg-gray-100 outline-none caret-black'
+            ref={refAngleInput}
+            onChange={handleAngleChange}
+            style={{
+              display: sIsAngleInputVisible ? 'block' : 'none',
+              maxWidth: '200%'
+            }}
+          />
+        </span>
+      </div>
     </div>
   );
 }
