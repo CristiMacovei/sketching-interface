@@ -17,9 +17,9 @@ export default function Home() {
       line: []
     }
   });
+  const [sCachedLines, setCachedLines] = useState([]);
 
   const [sSavedPoints, setSavedPoints] = useState([]);
-
   const [sSavedLines, setSavedLines] = useState([]);
 
   return (
@@ -41,6 +41,9 @@ export default function Home() {
         // saved lines & setter
         sSavedLines={sSavedLines}
         fSetSavedLines={setSavedLines}
+        // cached lines & setter
+        sCachedLines={sCachedLines}
+        fSetCachedLines={setCachedLines}
       />
 
       <FooterToolbar />

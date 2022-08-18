@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 
+import Line from './Line';
+
 export default function Canvas(props) {
   const [sCanvasLeft, setCanvasLeft] = useState(null);
   const [sCanvasTop, setCanvasTop] = useState(null);
@@ -19,6 +21,23 @@ export default function Canvas(props) {
   function handleMouseMove(evt) {
     setMouseX(evt.clientX - sCanvasLeft);
     setMouseY(evt.clientY - sCanvasTop);
+
+    if (props.sSelecting === 'line-second-point') {
+      const newCachedLines = [
+        {
+          first: {
+            x: props.sCachedPoints.tools.line[0].x,
+            y: props.sCachedPoints.tools.line[0].y
+          },
+          second: {
+            x: evt.clientX - sCanvasLeft,
+            y: evt.clientY - sCanvasTop
+          }
+        }
+      ];
+
+      props.fSetCachedLines(newCachedLines);
+    }
   }
 
   function handleMouseClick(evt) {
@@ -78,12 +97,7 @@ export default function Canvas(props) {
         ...props.sCachedPoints,
         tools: {
           ...props.sCachedPoints.tools,
-          line: [
-            {
-              x: sMouseX,
-              y: sMouseY
-            }
-          ]
+          line: []
         }
       };
 
@@ -92,6 +106,7 @@ export default function Canvas(props) {
 
       // clear cached line points
       props.fSetCachedPoints(newCachedPoints);
+      props.fSetCachedLines([]);
 
       // save points & line
       props.fSetSavedPoints(newSavedPoints);
@@ -106,6 +121,51 @@ export default function Canvas(props) {
         line: []
       }
     });
+
+    props.fSetCachedLines([]);
+  }
+
+  function changeSavedPointData(name, x, y) {
+    const newSavedPoints = props.sSavedPoints.map((point) => {
+      if (point.name === name) {
+        return {
+          name,
+          x,
+          y
+        };
+      } else {
+        return point;
+      }
+    });
+
+    const newSavedLines = props.sSavedLines.map((line) => {
+      let newFirst = line.first;
+      let newSecond = line.second;
+
+      if (line.first.name === name) {
+        newFirst = {
+          name,
+          x,
+          y
+        };
+      }
+
+      if (line.second.name === name) {
+        newSecond = {
+          name,
+          x,
+          y
+        };
+      }
+
+      return {
+        first: newFirst,
+        second: newSecond
+      };
+    });
+
+    props.fSetSavedPoints(newSavedPoints);
+    props.fSetSavedLines(newSavedLines);
   }
 
   return (
@@ -129,7 +189,6 @@ export default function Canvas(props) {
             );
           })}
       </div>
-
       {/* grid horizontal lines*/}
       <div className='absolute flex flex-col justify-between w-full h-full p-0'>
         {Array((props.sGridSize * 9) / 16)
@@ -143,17 +202,14 @@ export default function Canvas(props) {
             );
           })}
       </div>
-
       {/* debug */}
       <div className='absolute'>
         <span>{`Current Pos: X = ${sMouseX}, Y = ${sMouseY}`}</span>
       </div>
-
       {/* debug 2 */}
       <div className='absolute flex justify-end w-full'>
         <span>{`Currently Placing: ${props.sSelecting}`}</span>
       </div>
-
       {/* render saved points */}
       <div className='absolute w-full h-full'>
         {props.sSavedPoints.map((point, index) => {
@@ -169,35 +225,19 @@ export default function Canvas(props) {
       </div>
 
       {/* render saved lines */}
-      <div className='absolute w-full h-full'>
+      <div className='absolute z-10 w-full h-full'>
         {props.sSavedLines.map((line, index) => {
-          const xDelta = line.second.x - line.first.x;
-          const yDelta = line.second.y - line.first.y;
-
-          const lengthInPixels = Math.round(
-            Math.sqrt(xDelta * xDelta + yDelta * yDelta)
-          );
-
           return (
-            <div
-              key={`saved-line-${index}`}
-              className='absolute origin-bottom-left bg-red-600'
-              style={{
-                top: line.first.y + 2,
-                left: line.first.x + 2,
-                width: lengthInPixels,
-                height: 1,
-                transform: `rotate(${
-                  (Math.atan2(yDelta, xDelta) * 180) / Math.PI
-                }deg)`
-              }}
+            <Line
+              key={`cached-line-${index}`}
+              first={line.first}
+              second={line.second}
+              fChangeSavedPointData={changeSavedPointData}
             />
           );
         })}
       </div>
-
       {/* render line cached points */}
-      {/* // todo yeet these from refs */}
       <div className='absolute w-full h-full'>
         {props.sCachedPoints.tools.line.map((point, index) => {
           return (
@@ -209,7 +249,19 @@ export default function Canvas(props) {
           );
         })}
       </div>
-
+      {/* render cached lines */}
+      <div className='absolute w-full h-full'>
+        {props.sCachedLines.map((line, index) => {
+          return (
+            <Line
+              key={`cached-line-${index}`}
+              first={line.first}
+              second={line.second}
+              fChangeSavedPointData={changeSavedPointData}
+            />
+          );
+        })}
+      </div>
       {/* render current icon */}
       {props.sSelecting === null ? null : props.sSelecting ===
         'line-first-point' ? (
