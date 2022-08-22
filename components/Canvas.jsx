@@ -6,6 +6,8 @@ export default function Canvas(props) {
   const [sCanvasLeft, setCanvasLeft] = useState(null);
   const [sCanvasTop, setCanvasTop] = useState(null);
 
+  const [sCanvasWidth, setCanvasWidth] = useState(null);
+
   const [sMouseX, setMouseX] = useState(null);
   const [sMouseY, setMouseY] = useState(null);
 
@@ -18,6 +20,8 @@ export default function Canvas(props) {
 
     setCanvasLeft(Math.round(boundingRect.left));
     setCanvasTop(Math.round(boundingRect.top));
+
+    setCanvasWidth(Math.round(boundingRect.width));
   }, []);
 
   function snapToPoint(x, y, pointSet, maxDelta = 10) {
@@ -63,12 +67,6 @@ export default function Canvas(props) {
 
     setMouseX(instantX);
     setMouseY(instantY);
-
-    console.log(`Trying to snap from ${sMouseX}, ${sMouseY}`);
-    console.log(
-      `To ${props.sSavedPoints.map((point) => `${point.x}, ${point.y}`)}`
-    );
-    console.log(`Closest point is ${closestPoint?.x}, ${closestPoint?.y}`);
 
     // save cached line if we're selecting the second point
     if (props.sSelecting === 'line-second-point') {
@@ -298,6 +296,11 @@ export default function Canvas(props) {
               first={line.first}
               second={line.second}
               fChangeSavedPointData={changeSavedPointData}
+              // grid units
+              sGridSize={props.sGridSize}
+              sGridDimension={props.sGridDimension}
+              sGridUnit={props.sGridUnit}
+              sCanvasWidth={sCanvasWidth}
             />
           );
         })}
@@ -323,6 +326,11 @@ export default function Canvas(props) {
               first={line.first}
               second={line.second}
               fChangeSavedPointData={changeSavedPointData}
+              // grid units
+              sGridSize={props.sGridSize}
+              sGridDimension={props.sGridDimension}
+              sGridUnit={props.sGridUnit}
+              sCanvasWidth={sCanvasWidth}
             />
           );
         })}

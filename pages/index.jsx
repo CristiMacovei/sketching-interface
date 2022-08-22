@@ -1,7 +1,6 @@
 import { useState } from 'react';
 
 import HeaderToolbar from '../components/HeaderToolbar';
-import Button from '../components/Button';
 
 import Canvas from '../components/Canvas';
 
@@ -21,6 +20,9 @@ export default function Home() {
 
   const [sSavedPoints, setSavedPoints] = useState([]);
   const [sSavedLines, setSavedLines] = useState([]);
+
+  const [sGridDimension, setGridDimension] = useState(null);
+  const [sGridUnit, setGridUnit] = useState('px');
 
   return (
     <div className='flex flex-col w-screen h-screen pt-4'>
@@ -44,9 +46,20 @@ export default function Home() {
         // cached lines & setter
         sCachedLines={sCachedLines}
         fSetCachedLines={setCachedLines}
+        // grid dimensions & setters
+        sGridDimension={sGridDimension}
+        setGridDimension={setGridDimension}
+        sGridUnit={sGridUnit}
+        setGridUnit={setGridUnit}
       />
 
-      <FooterToolbar />
+      <FooterToolbar
+        // grid dimensions
+        sGridDimension={sGridDimension}
+        setGridDimension={setGridDimension}
+        sGridUnit={sGridUnit}
+        setGridUnit={setGridUnit}
+      />
     </div>
   );
 }

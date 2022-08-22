@@ -1,14 +1,17 @@
 import React from 'react';
 
-import Button from './Button';
+import GridSizeInput from './GridSizeInput';
 
-export default function FooterToolbar() {
+export default function FooterToolbar(props) {
   return (
     <div className='flex items-center justify-end w-4/5 mx-auto mt-10'>
       {/* right */}
-      <div>
-        <Button text='Grid' />
-      </div>
+      <GridSizeInput
+        sGridDimension={props.sGridDimension}
+        setGridDimension={props.setGridDimension}
+        sGridUnit={props.sGridUnit}
+        setGridUnit={props.setGridUnit}
+      />
     </div>
   );
 }

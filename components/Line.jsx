@@ -1,7 +1,8 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 
 export default function Line(props) {
   const [sLength, setLength] = useState(0);
+  const [sUnitLength, setUnitLength] = useState(0);
   const [sAngle, setAngle] = useState(0);
 
   const [sIsLengthInputVisible, setIsLengthInputVisible] = useState(false);
@@ -10,36 +11,80 @@ export default function Line(props) {
   const refLengthInput = useRef(null);
   const refAngleInput = useRef(null);
 
+  const pixelsToUnits = useCallback(
+    (lengthInPixels) => {
+      return props.sGridUnit === 'px'
+        ? lengthInPixels
+        : (lengthInPixels / (props.sCanvasWidth / props.sGridSize)) *
+            props.sGridDimension;
+    },
+    [props.sGridUnit, props.sCanvasWidth, props.sGridSize, props.sGridDimension]
+  );
+
+  const unitsToPixels = useCallback(
+    (lengthInUnits) => {
+      return props.sGridUnit === 'px'
+        ? lengthInUnits
+        : (lengthInUnits / props.sGridDimension) *
+            (props.sCanvasWidth / props.sGridSize);
+    },
+    [props.sGridUnit, props.sCanvasWidth, props.sGridSize, props.sGridDimension]
+  );
+
   useEffect(() => {
+    console.log(`Changed first: (x: ${props.first.x}, y: ${props.first.y})`);
+    console.log(`Changed second: (x: ${props.second.x}, y: ${props.second.y})`);
     const xDelta = props.second.x - props.first.x;
     const yDelta = props.second.y - props.first.y;
 
-    const lengthInPixels = Math.round(
-      Math.sqrt(xDelta * xDelta + yDelta * yDelta)
-    );
+    const lengthInPixels = Math.sqrt(xDelta * xDelta + yDelta * yDelta);
 
     const angleDeg = (Math.atan2(yDelta, xDelta) * 180) / Math.PI;
 
+    const lengthInUnits = pixelsToUnits(lengthInPixels);
+
     setLength(lengthInPixels);
+    setUnitLength(lengthInUnits);
     setAngle(angleDeg);
+  }, [props.first, props.second, pixelsToUnits]);
 
-    refLengthInput.current.value = lengthInPixels;
-    refAngleInput.current.value = Math.round(angleDeg * 100) / 100;
-  }, [props.first, props.second]);
+  useEffect(() => {
+    refLengthInput.current.value = sUnitLength.toFixed(2);
+    refAngleInput.current.value = sAngle.toFixed(2);
+  }, [sUnitLength, sAngle]);
 
-  function handleLengthChange(evt) {
-    const newLength = evt.target.value;
+  function handleLengthBlur(evt) {
+    const newLength = parseFloat(evt.target.value);
+    if (isNaN(newLength)) {
+      return;
+    }
+
+    console.log(
+      `New length: ${newLength} ${props.sGridUnit} @ ${props.sGridDimension} / cell`
+    );
+
+    const newLengthInPixels = unitsToPixels(newLength);
+
+    console.log(`New length: ${newLengthInPixels} pixels`);
 
     const newSecondX =
-      props.first.x + Math.cos((sAngle * Math.PI) / 180) * newLength;
+      props.first.x + Math.cos((sAngle * Math.PI) / 180) * newLengthInPixels;
     const newSecondY =
-      props.first.y + Math.sin((sAngle * Math.PI) / 180) * newLength;
+      props.first.y + Math.sin((sAngle * Math.PI) / 180) * newLengthInPixels;
+
+    console.log(`Old first: (x: ${props.first.x}, y: ${props.first.y})`);
+    console.log(`New second: (x: ${newSecondX}, y: ${newSecondY})`);
 
     props.fChangeSavedPointData(props.second.name, newSecondX, newSecondY);
+
+    setIsLengthInputVisible(false);
   }
 
-  function handleAngleChange(evt) {
-    const newAngle = evt.target.value;
+  function handleAngleBlur(evt) {
+    const newAngle = parseFloat(evt.target.value);
+    if (isNaN(newAngle)) {
+      return;
+    }
 
     const newSecondX =
       props.first.x + Math.cos((newAngle * Math.PI) / 180) * sLength;
@@ -47,6 +92,8 @@ export default function Line(props) {
       props.first.y + Math.sin((newAngle * Math.PI) / 180) * sLength;
 
     props.fChangeSavedPointData(props.second.name, newSecondX, newSecondY);
+
+    setIsAngleInputVisible(false);
   }
 
   //* autofocus inputs
@@ -83,14 +130,14 @@ export default function Line(props) {
           className='relative'
           onClick={() => setIsLengthInputVisible(true)}
         >
-          {sLength} px
+          {sUnitLength.toFixed(2)} {props.sGridUnit}
           <input
-            onBlur={() => setIsLengthInputVisible(false)}
-            type='number'
+            // onBlur={() => setIsLengthInputVisible(false)}
+            type='text'
             step={1}
             className='absolute bottom-0 left-0 w-20 bg-gray-100 outline-none caret-black'
             ref={refLengthInput}
-            onChange={handleLengthChange}
+            onBlur={handleLengthBlur}
             style={{
               display: sIsLengthInputVisible ? 'block' : 'none',
               maxWidth: '200%'
@@ -115,12 +162,11 @@ export default function Line(props) {
         >
           {sAngle.toFixed(2)} deg
           <input
-            onBlur={() => setIsAngleInputVisible(false)}
-            type='number'
+            type='text'
             step={1}
             className='absolute bottom-0 left-0 w-20 bg-gray-100 outline-none caret-black'
             ref={refAngleInput}
-            onChange={handleAngleChange}
+            onBlur={handleAngleBlur}
             style={{
               display: sIsAngleInputVisible ? 'block' : 'none',
               maxWidth: '200%'
