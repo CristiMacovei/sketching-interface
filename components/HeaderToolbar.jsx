@@ -10,6 +10,15 @@ export default function HeaderToolbar(props) {
       props.fSetCanvasSelecting('line-first-point');
     }
   }
+
+  function handleAreaToolClick() {
+    console.log('Area tool clicked');
+
+    if (typeof props.fSetCanvasSelecting === 'function') {
+      props.fSetCanvasSelecting('area-point-1');
+    }
+  }
+
   return (
     <div className='flex items-center justify-between w-4/5 mx-auto'>
       {/* left  */}
@@ -19,8 +28,9 @@ export default function HeaderToolbar(props) {
 
       {/* middle buttons */}
       <div>
-        <div className='flex flex-row items-center justify-center'>
+        <div className='flex flex-row items-center justify-center gap-2'>
           <Button text='/' fClick={handleLineToolClick} />
+          <Button text='A' fClick={handleAreaToolClick} />
         </div>
       </div>
 

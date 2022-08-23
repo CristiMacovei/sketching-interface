@@ -13,7 +13,8 @@ export default function Home() {
 
   const [sCachedPoints, setCachedPoints] = useState({
     tools: {
-      line: []
+      line: [],
+      area: []
     }
   });
   const [sCachedLines, setCachedLines] = useState([]);

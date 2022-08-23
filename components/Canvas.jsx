@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 
 import Line from './Line';
+import Area from './Area';
 
 export default function Canvas(props) {
   const [sCanvasLeft, setCanvasLeft] = useState(null);
@@ -68,6 +69,9 @@ export default function Canvas(props) {
     setMouseX(instantX);
     setMouseY(instantY);
 
+    const xWithSnap = closestPoint ? closestPoint.x : instantX;
+    const yWithSnap = closestPoint ? closestPoint.y : instantY;
+
     // save cached line if we're selecting the second point
     if (props.sSelecting === 'line-second-point') {
       const newCachedLines = [
@@ -77,8 +81,8 @@ export default function Canvas(props) {
             y: props.sCachedPoints.tools.line[0].y
           },
           second: {
-            x: closestPoint ? closestPoint.x : instantX,
-            y: closestPoint ? closestPoint.y : instantY
+            x: xWithSnap,
+            y: yWithSnap
           }
         }
       ];
@@ -88,6 +92,10 @@ export default function Canvas(props) {
   }
 
   function handleMouseClick(evt) {
+    if (props.sSelecting === null) {
+      return;
+    }
+
     //* line tool
     // cache the first point
     if (props.sSelecting === 'line-first-point') {
@@ -175,13 +183,43 @@ export default function Canvas(props) {
       props.fSetSavedPoints(newSavedPoints);
       props.fSetSavedLines(newSavedLines);
     }
+
+    //* area tool
+    if (props.sSelecting.startsWith('area-point-')) {
+      if (!sSnappedPoint) {
+        return;
+      }
+
+      console.log(props.sCachedPoints);
+      const newCachedPoints = {
+        ...props.sCachedPoints,
+        tools: {
+          ...props.sCachedPoints.tools,
+          area: [
+            ...props.sCachedPoints.tools.area,
+            {
+              x: sSnappedPoint ? sSnappedPoint.x : sMouseX,
+              y: sSnappedPoint ? sSnappedPoint.y : sMouseY,
+              snapped: sSnappedPoint ? true : false,
+              snappedPoint: sSnappedPoint
+            }
+          ]
+        }
+      };
+
+      props.fSetCachedPoints(newCachedPoints);
+      props.fSetSelecting(
+        'area-point-' + (props.sCachedPoints.tools.area.length + 1)
+      );
+    }
   }
 
   function handleAbort(evt) {
     props.fSetSelecting(null);
     props.fSetCachedPoints({
       tools: {
-        line: []
+        line: [],
+        area: []
       }
     });
 
@@ -281,7 +319,7 @@ export default function Canvas(props) {
               //  todo add name popup
               key={`saved-point-${index}`}
               className='absolute w-2 h-2 bg-red-600 rounded-full'
-              style={{ top: point.y, left: point.x }}
+              style={{ top: point.y - 1, left: point.x - 1 }}
             />
           );
         })}
@@ -305,6 +343,7 @@ export default function Canvas(props) {
           );
         })}
       </div>
+
       {/* render line cached points */}
       <div className='absolute w-full h-full'>
         {props.sCachedPoints.tools.line.map((point, index) => {
@@ -335,9 +374,26 @@ export default function Canvas(props) {
           );
         })}
       </div>
+
+      {/* render area and cached points */}
+      <div className='absolute w-full h-full'>
+        {props.sCachedPoints.tools.area.map((point, index) => {
+          return (
+            <div
+              key={`area-cached-point-${index}`}
+              className='absolute w-2 h-2 bg-green-600 rounded-full'
+              style={{ top: point.y - 1, left: point.x - 1 }}
+            />
+          );
+        })}
+        <Area
+          points={props.sCachedPoints.tools.area}
+          savedLines={props.sSavedLines}
+        />
+      </div>
       {/* render current icon */}
       {props.sSelecting === null ? null : props.sSelecting ===
-        'line-first-point' ? (
+          'line-first-point' || props.sSelecting === 'line-second-point' ? (
         <div
           className='absolute w-1 h-1 bg-red-500 rounded-full'
           style={{
@@ -347,7 +403,7 @@ export default function Canvas(props) {
         />
       ) : (
         <div
-          className='absolute w-1 h-1 bg-red-500 rounded-full'
+          className='absolute w-1 h-1 bg-green-500 rounded-full'
           style={{
             top: sSnappedPoint ? sSnappedPoint.y : sMouseY,
             left: sSnappedPoint ? sSnappedPoint.x : sMouseX
