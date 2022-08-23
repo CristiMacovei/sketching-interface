@@ -58,9 +58,9 @@ export default function GridSizeInput(props) {
         ref={rUnitSelect}
         onChange={handleUnitSelectChange}
       >
-        <option value='px'>Pixels</option>
         <option value='m'>Meters</option>
         <option value='ft'>Feet</option>
+        <option value='px'>Pixels</option>
       </select>
 
       <input

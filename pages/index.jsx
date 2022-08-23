@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import HeaderToolbar from '../components/HeaderToolbar';
 
@@ -21,9 +21,38 @@ export default function Home() {
 
   const [sSavedPoints, setSavedPoints] = useState([]);
   const [sSavedLines, setSavedLines] = useState([]);
+  const [sSavedAreas, setSavedAreas] = useState([]);
 
-  const [sGridDimension, setGridDimension] = useState(null);
-  const [sGridUnit, setGridUnit] = useState('px');
+  const [sGridDimension, setGridDimension] = useState(1);
+  const [sGridUnit, setGridUnit] = useState('m');
+
+  function clearCache() {
+    setCachedPoints({
+      tools: {
+        line: [],
+        area: []
+      }
+    });
+    setCachedLines([]);
+  }
+
+  useEffect(() => {
+    window.addEventListener('keydown', (evt) => {
+      if (evt.key === 'Escape') {
+        clearCache();
+
+        setSelecting(null);
+      } else if (evt.key === 'l') {
+        clearCache();
+
+        setSelecting('line-first-point');
+      } else if (evt.key === 'a') {
+        clearCache();
+
+        setSelecting('area-point-1');
+      }
+    });
+  }, []);
 
   return (
     <div className='flex flex-col w-screen h-screen pt-4'>
@@ -47,11 +76,16 @@ export default function Home() {
         // cached lines & setter
         sCachedLines={sCachedLines}
         fSetCachedLines={setCachedLines}
+        // saved areas & setter
+        sSavedAreas={sSavedAreas}
+        fSetSavedAreas={setSavedAreas}
         // grid dimensions & setters
         sGridDimension={sGridDimension}
         setGridDimension={setGridDimension}
         sGridUnit={sGridUnit}
         setGridUnit={setGridUnit}
+        // clear cache
+        fClearCache={clearCache}
       />
 
       <FooterToolbar

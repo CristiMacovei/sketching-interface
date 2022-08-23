@@ -8,6 +8,7 @@ export default function Canvas(props) {
   const [sCanvasTop, setCanvasTop] = useState(null);
 
   const [sCanvasWidth, setCanvasWidth] = useState(null);
+  const [sCanvasHeight, setCanvasHeight] = useState(null);
 
   const [sMouseX, setMouseX] = useState(null);
   const [sMouseY, setMouseY] = useState(null);
@@ -23,6 +24,7 @@ export default function Canvas(props) {
     setCanvasTop(Math.round(boundingRect.top));
 
     setCanvasWidth(Math.round(boundingRect.width));
+    setCanvasHeight(Math.round(boundingRect.height));
   }, []);
 
   function snapToPoint(x, y, pointSet, maxDelta = 10) {
@@ -186,7 +188,23 @@ export default function Canvas(props) {
 
     //* area tool
     if (props.sSelecting.startsWith('area-point-')) {
+      // save it
       if (!sSnappedPoint) {
+        const newSavedAreas = [
+          ...props.sSavedAreas,
+          {
+            points: props.sCachedPoints.tools.area
+          }
+        ];
+
+        console.log('SAVING');
+
+        props.fSetSavedAreas(newSavedAreas);
+
+        props.fSetSelecting(null);
+
+        props.fClearCache();
+
         return;
       }
 
@@ -216,14 +234,8 @@ export default function Canvas(props) {
 
   function handleAbort(evt) {
     props.fSetSelecting(null);
-    props.fSetCachedPoints({
-      tools: {
-        line: [],
-        area: []
-      }
-    });
 
-    props.fSetCachedLines([]);
+    props.fClearCache();
   }
 
   function changeSavedPointData(name, x, y) {
@@ -386,11 +398,43 @@ export default function Canvas(props) {
             />
           );
         })}
+        {console.log('cached area', props.sCachedPoints.tools.area)}
+
         <Area
           points={props.sCachedPoints.tools.area}
           savedLines={props.sSavedLines}
+          sCanvasWidth={sCanvasWidth}
+          sCanvasHeight={sCanvasHeight}
+          bg='red'
+          textColor='#22c55e'
+          // grid units
+          sGridSize={props.sGridSize}
+          sGridDimension={props.sGridDimension}
+          sGridUnit={props.sGridUnit}
         />
       </div>
+
+      {/* render saved areas */}
+      <div className='absolute w-full h-full'>
+        {props.sSavedAreas.map((area, index) => {
+          return (
+            <Area
+              key={`saved-area-${index}`}
+              points={area.points}
+              savedLines={props.sSavedLines}
+              sCanvasWidth={sCanvasWidth}
+              sCanvasHeight={sCanvasHeight}
+              bg='#4ade80'
+              textColor='#22c55e'
+              // grid units
+              sGridSize={props.sGridSize}
+              sGridDimension={props.sGridDimension}
+              sGridUnit={props.sGridUnit}
+            />
+          );
+        })}
+      </div>
+
       {/* render current icon */}
       {props.sSelecting === null ? null : props.sSelecting ===
           'line-first-point' || props.sSelecting === 'line-second-point' ? (
