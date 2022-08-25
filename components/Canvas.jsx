@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 
 import Line from './Line';
 import Area from './Area';
+import Text from './Text';
 
 export default function Canvas(props) {
   const [sCanvasLeft, setCanvasLeft] = useState(null);
@@ -230,6 +231,24 @@ export default function Canvas(props) {
         'area-point-' + (props.sCachedPoints.tools.area.length + 1)
       );
     }
+
+    //* text tool
+    if (props.sSelecting === 'text') {
+      // save it
+      const newSavedTexts = [
+        ...props.sSavedTexts,
+        {
+          x: sMouseX,
+          y: sMouseY,
+          text: 'text',
+          name: `text-${new Date().getTime()}`
+        }
+      ];
+
+      props.fSetSavedTexts(newSavedTexts);
+
+      props.fSetSelecting(null);
+    }
   }
 
   function handleAbort(evt) {
@@ -281,6 +300,21 @@ export default function Canvas(props) {
     props.fSetSavedLines(newSavedLines);
   }
 
+  function changeSavedTextValue(textName, newValue) {
+    const newSavedTexts = props.sSavedTexts.map((text) => {
+      if (text.name === textName) {
+        return {
+          ...text,
+          text: newValue
+        };
+      }
+
+      return text;
+    });
+
+    props.fSetSavedTexts(newSavedTexts);
+  }
+
   return (
     <div
       className='relative mx-auto mt-6 bg-white border border-gray-700 aspect-video grow'
@@ -289,42 +323,45 @@ export default function Canvas(props) {
       onMouseLeave={handleAbort}
       ref={rMainCanvasDiv}
     >
-      {/* grid vertical lines*/}
-      <div className='absolute flex flex-row justify-between w-full h-full p-0'>
-        {Array(props.sGridSize)
-          .fill(0)
-          .map((_, index) => {
-            return (
-              <div
-                key={`grid-line-v-${index}`}
-                className='w-px h-full bg-gray-400 bg-opacity-60'
-              ></div>
-            );
-          })}
+      <div className='absolute z-10 w-full h-full'>
+        {/* grid vertical lines*/}
+        <div className='absolute flex flex-row justify-between w-full h-full p-0'>
+          {Array(props.sGridSize)
+            .fill(0)
+            .map((_, index) => {
+              return (
+                <div
+                  key={`grid-line-v-${index}`}
+                  className='w-px h-full bg-gray-400 bg-opacity-60'
+                ></div>
+              );
+            })}
+        </div>
+        {/* grid horizontal lines*/}
+        <div className='absolute flex flex-col justify-between w-full h-full p-0'>
+          {Array((props.sGridSize * 9) / 16)
+            .fill(0)
+            .map((_, index) => {
+              return (
+                <div
+                  key={`grid-line-v-${index}`}
+                  className='w-full h-px bg-gray-400 bg-opacity-60'
+                ></div>
+              );
+            })}
+        </div>
+        {/* debug */}
+        <div className='absolute'>
+          <span>{`Current Pos: X = ${sMouseX}, Y = ${sMouseY}`}</span>
+        </div>
+        {/* debug 2 */}
+        <div className='absolute flex justify-end w-full'>
+          <span>{`Currently Placing: ${props.sSelecting}`}</span>
+        </div>
       </div>
-      {/* grid horizontal lines*/}
-      <div className='absolute flex flex-col justify-between w-full h-full p-0'>
-        {Array((props.sGridSize * 9) / 16)
-          .fill(0)
-          .map((_, index) => {
-            return (
-              <div
-                key={`grid-line-v-${index}`}
-                className='w-full h-px bg-gray-400 bg-opacity-60'
-              ></div>
-            );
-          })}
-      </div>
-      {/* debug */}
-      <div className='absolute'>
-        <span>{`Current Pos: X = ${sMouseX}, Y = ${sMouseY}`}</span>
-      </div>
-      {/* debug 2 */}
-      <div className='absolute flex justify-end w-full'>
-        <span>{`Currently Placing: ${props.sSelecting}`}</span>
-      </div>
+
       {/* render saved points */}
-      <div className='absolute w-full h-full'>
+      <div className='absolute z-20 w-full h-full'>
         {props.sSavedPoints.map((point, index) => {
           return (
             <div
@@ -335,29 +372,8 @@ export default function Canvas(props) {
             />
           );
         })}
-      </div>
 
-      {/* render saved lines */}
-      <div className='absolute z-10 w-full h-full'>
-        {props.sSavedLines.map((line, index) => {
-          return (
-            <Line
-              key={`cached-line-${index}`}
-              first={line.first}
-              second={line.second}
-              fChangeSavedPointData={changeSavedPointData}
-              // grid units
-              sGridSize={props.sGridSize}
-              sGridDimension={props.sGridDimension}
-              sGridUnit={props.sGridUnit}
-              sCanvasWidth={sCanvasWidth}
-            />
-          );
-        })}
-      </div>
-
-      {/* render line cached points */}
-      <div className='absolute w-full h-full'>
+        {/* render line cached points */}
         {props.sCachedPoints.tools.line.map((point, index) => {
           return (
             <div
@@ -367,9 +383,8 @@ export default function Canvas(props) {
             />
           );
         })}
-      </div>
-      {/* render cached lines */}
-      <div className='absolute w-full h-full'>
+
+        {/* render cached lines */}
         {props.sCachedLines.map((line, index) => {
           return (
             <Line
@@ -385,10 +400,8 @@ export default function Canvas(props) {
             />
           );
         })}
-      </div>
 
-      {/* render area and cached points */}
-      <div className='absolute w-full h-full'>
+        {/* render area and cached points */}
         {props.sCachedPoints.tools.area.map((point, index) => {
           return (
             <div
@@ -412,10 +425,8 @@ export default function Canvas(props) {
           sGridDimension={props.sGridDimension}
           sGridUnit={props.sGridUnit}
         />
-      </div>
 
-      {/* render saved areas */}
-      <div className='absolute w-full h-full'>
+        {/* render saved areas */}
         {props.sSavedAreas.map((area, index) => {
           return (
             <Area
@@ -435,6 +446,40 @@ export default function Canvas(props) {
         })}
       </div>
 
+      <div className='absolute z-30 w-full h-full'>
+        {/* render saved lines */}
+        {props.sSavedLines.map((line, index) => {
+          return (
+            <Line
+              key={`cached-line-${index}`}
+              first={line.first}
+              second={line.second}
+              fChangeSavedPointData={changeSavedPointData}
+              // grid units
+              sGridSize={props.sGridSize}
+              sGridDimension={props.sGridDimension}
+              sGridUnit={props.sGridUnit}
+              sCanvasWidth={sCanvasWidth}
+            />
+          );
+        })}
+
+        {/* render saved texts */}
+        {props.sSavedTexts.map((text, index) => {
+          return (
+            <Text
+              key={`saved-text-${index}`}
+              x={text.x}
+              y={text.y}
+              text={text.text}
+              saved={true}
+              name={text.name}
+              fChangeSavedTextValue={changeSavedTextValue}
+            />
+          );
+        })}
+      </div>
+
       {/* render current icon */}
       {props.sSelecting === null ? null : props.sSelecting ===
           'line-first-point' || props.sSelecting === 'line-second-point' ? (
@@ -445,6 +490,8 @@ export default function Canvas(props) {
             left: sSnappedPoint ? sSnappedPoint.x : sMouseX
           }}
         />
+      ) : props.sSelecting === 'text' ? (
+        <Text x={sMouseX} y={sMouseY} />
       ) : (
         <div
           className='absolute w-1 h-1 bg-green-500 rounded-full'

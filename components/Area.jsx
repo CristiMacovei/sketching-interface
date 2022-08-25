@@ -113,7 +113,7 @@ export default function Area(props) {
   ]);
 
   return (
-    <div className='absolute w-full h-full'>
+    <div className='absolute z-10 w-full h-full'>
       <canvas
         ref={rAreaCanvas}
         width={props.sCanvasWidth}

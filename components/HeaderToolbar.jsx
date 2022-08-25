@@ -19,6 +19,14 @@ export default function HeaderToolbar(props) {
     }
   }
 
+  function handleTextToolClick() {
+    console.log('Text tool clicked');
+
+    if (typeof props.fSetCanvasSelecting === 'function') {
+      props.fSetCanvasSelecting('text');
+    }
+  }
+
   return (
     <div className='flex items-center justify-between w-4/5 mx-auto'>
       {/* left  */}
@@ -36,7 +44,7 @@ export default function HeaderToolbar(props) {
 
       {/* right */}
       <div>
-        <Button text='Text' />
+        <Button text='Text' fClick={handleTextToolClick} />
       </div>
     </div>
   );

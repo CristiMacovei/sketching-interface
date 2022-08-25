@@ -23,6 +23,9 @@ export default function Home() {
   const [sSavedLines, setSavedLines] = useState([]);
   const [sSavedAreas, setSavedAreas] = useState([]);
 
+  const [sCachedText, setCachedText] = useState(null);
+  const [sSavedTexts, setSavedTexts] = useState([]);
+
   const [sGridDimension, setGridDimension] = useState(1);
   const [sGridUnit, setGridUnit] = useState('m');
 
@@ -50,6 +53,10 @@ export default function Home() {
         clearCache();
 
         setSelecting('area-point-1');
+      } else if (evt.key === 't') {
+        clearCache();
+
+        setSelecting('text');
       }
     });
   }, []);
@@ -79,6 +86,12 @@ export default function Home() {
         // saved areas & setter
         sSavedAreas={sSavedAreas}
         fSetSavedAreas={setSavedAreas}
+        // cached text & setter
+        sCachedText={sCachedText}
+        fSetCachedText={setCachedText}
+        // saved texts & setter
+        sSavedTexts={sSavedTexts}
+        fSetSavedTexts={setSavedTexts}
         // grid dimensions & setters
         sGridDimension={sGridDimension}
         setGridDimension={setGridDimension}
