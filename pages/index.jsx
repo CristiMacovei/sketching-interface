@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 import HeaderToolbar from '../components/HeaderToolbar';
 
@@ -8,6 +8,8 @@ import FooterToolbar from '../components/FooterToolbar';
 
 export default function Home() {
   const [sGridSize, setGridSize] = useState(64);
+  const [sCanvasWidth, setCanvasWidth] = useState(0);
+  const [sCanvasHeight, setCanvasHeight] = useState(0);
 
   const [sSelecting, setSelecting] = useState(null);
 
@@ -28,6 +30,8 @@ export default function Home() {
 
   const [sGridDimension, setGridDimension] = useState(1);
   const [sGridUnit, setGridUnit] = useState('m');
+
+  const rExportCanvas = useRef(null);
 
   function clearCache() {
     setCachedPoints({
@@ -63,7 +67,23 @@ export default function Home() {
 
   return (
     <div className='flex flex-col w-screen h-screen pt-4'>
-      <HeaderToolbar fSetCanvasSelecting={setSelecting} />
+      <HeaderToolbar
+        fSetCanvasSelecting={setSelecting}
+        // canvas dimensions for export
+        sCanvasWidth={sCanvasWidth}
+        sCanvasHeight={sCanvasHeight}
+        // dimensions
+        sGridDimension={sGridDimension}
+        sGridUnit={sGridUnit}
+        sGridSize={sGridSize}
+        // saved stuff for export
+        sSavedPoints={sSavedPoints}
+        sSavedLines={sSavedLines}
+        sSavedAreas={sSavedAreas}
+        sSavedTexts={sSavedTexts}
+        // export canvas
+        rExportCanvas={rExportCanvas}
+      />
 
       <Canvas
         // grid size
@@ -97,8 +117,14 @@ export default function Home() {
         setGridDimension={setGridDimension}
         sGridUnit={sGridUnit}
         setGridUnit={setGridUnit}
+        sCanvasWidth={sCanvasWidth}
+        fSetCanvasWidth={setCanvasWidth}
+        sCanvasHeight={sCanvasHeight}
+        fSetCanvasHeight={setCanvasHeight}
         // clear cache
         fClearCache={clearCache}
+        // export canvas
+        rExportCanvas={rExportCanvas}
       />
 
       <FooterToolbar

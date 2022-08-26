@@ -8,9 +8,6 @@ export default function Canvas(props) {
   const [sCanvasLeft, setCanvasLeft] = useState(null);
   const [sCanvasTop, setCanvasTop] = useState(null);
 
-  const [sCanvasWidth, setCanvasWidth] = useState(null);
-  const [sCanvasHeight, setCanvasHeight] = useState(null);
-
   const [sMouseX, setMouseX] = useState(null);
   const [sMouseY, setMouseY] = useState(null);
 
@@ -24,8 +21,8 @@ export default function Canvas(props) {
     setCanvasLeft(Math.round(boundingRect.left));
     setCanvasTop(Math.round(boundingRect.top));
 
-    setCanvasWidth(Math.round(boundingRect.width));
-    setCanvasHeight(Math.round(boundingRect.height));
+    props.fSetCanvasWidth(Math.round(boundingRect.width));
+    props.fSetCanvasHeight(Math.round(boundingRect.height));
   }, []);
 
   function snapToPoint(x, y, pointSet, maxDelta = 10) {
@@ -323,6 +320,15 @@ export default function Canvas(props) {
       onMouseLeave={handleAbort}
       ref={rMainCanvasDiv}
     >
+      <div className='absolute z-0 hidden w-full h-full'>
+        <canvas
+          width={props.sCanvasWidth}
+          height={props.sCanvasHeight}
+          ref={props.rExportCanvas}
+          className=''
+        ></canvas>
+      </div>
+
       <div className='absolute z-10 w-full h-full'>
         {/* grid vertical lines*/}
         <div className='absolute flex flex-row justify-between w-full h-full p-0'>
@@ -396,7 +402,7 @@ export default function Canvas(props) {
               sGridSize={props.sGridSize}
               sGridDimension={props.sGridDimension}
               sGridUnit={props.sGridUnit}
-              sCanvasWidth={sCanvasWidth}
+              sCanvasWidth={props.sCanvasWidth}
             />
           );
         })}
@@ -411,13 +417,12 @@ export default function Canvas(props) {
             />
           );
         })}
-        {console.log('cached area', props.sCachedPoints.tools.area)}
 
         <Area
           points={props.sCachedPoints.tools.area}
           savedLines={props.sSavedLines}
-          sCanvasWidth={sCanvasWidth}
-          sCanvasHeight={sCanvasHeight}
+          sCanvasWidth={props.sCanvasWidth}
+          sCanvasHeight={props.sCanvasHeight}
           bg='red'
           textColor='#22c55e'
           // grid units
@@ -433,8 +438,8 @@ export default function Canvas(props) {
               key={`saved-area-${index}`}
               points={area.points}
               savedLines={props.sSavedLines}
-              sCanvasWidth={sCanvasWidth}
-              sCanvasHeight={sCanvasHeight}
+              sCanvasWidth={props.sCanvasWidth}
+              sCanvasHeight={props.sCanvasHeight}
               bg='#4ade80'
               textColor='#22c55e'
               // grid units
@@ -459,7 +464,7 @@ export default function Canvas(props) {
               sGridSize={props.sGridSize}
               sGridDimension={props.sGridDimension}
               sGridUnit={props.sGridUnit}
-              sCanvasWidth={sCanvasWidth}
+              sCanvasWidth={props.sCanvasWidth}
             />
           );
         })}
