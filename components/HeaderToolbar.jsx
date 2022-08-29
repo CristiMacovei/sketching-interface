@@ -117,6 +117,11 @@ export default function HeaderToolbar(props) {
     });
     ctx.restore();
 
+    ctx.fillStyle = '#000'; // black
+    props.sSavedTexts.forEach((t) => {
+      ctx.fillText(t.text, t.x, t.y);
+    });
+
     const dataURL = tmpCanvas.toDataURL();
 
     const tmpLink = document.createElement('a');

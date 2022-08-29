@@ -111,12 +111,14 @@ export default function Line(props) {
 
   return (
     <div
-      className='absolute text-center origin-bottom-left bg-red-600'
+      className={`absolute text-center origin-bottom-left ${
+        sAngle % 90 === 0 ? 'bg-green-600' : 'bg-red-600'
+      }`}
       style={{
         top: props.first.y + 2,
         left: props.first.x + 2,
         width: sLength,
-        height: 1,
+        height: sAngle % 90 === 0 ? 2 : 1,
         transform: `rotate(${sAngle}deg)`
       }}
     >

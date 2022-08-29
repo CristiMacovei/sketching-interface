@@ -320,7 +320,7 @@ export default function Canvas(props) {
       onMouseLeave={handleAbort}
       ref={rMainCanvasDiv}
     >
-      <div className='absolute z-0 hidden w-full h-full'>
+      <div className='absolute hidden z-50 w-full h-full'>
         <canvas
           width={props.sCanvasWidth}
           height={props.sCanvasHeight}
