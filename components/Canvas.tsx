@@ -1,21 +1,41 @@
-import { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 import Line from './Line';
 import Area from './Area';
 import Text from './Text';
 
+type NullableNumber = number | null;
+
+type Point = {
+  x: number;
+  y: number;
+  name: string;
+  snapped: boolean;
+};
+
+type NullablePoint = Point | null;
+
 export default function Canvas(props) {
-  const [sCanvasLeft, setCanvasLeft] = useState(null);
-  const [sCanvasTop, setCanvasTop] = useState(null);
+  const [sCanvasLeft, setCanvasLeft] = useState<NullableNumber>(null);
+  const [sCanvasTop, setCanvasTop] = useState<NullableNumber>(null);
 
-  const [sMouseX, setMouseX] = useState(null);
-  const [sMouseY, setMouseY] = useState(null);
+  const [sMouseX, setMouseX] = useState<NullableNumber>(null);
+  const [sMouseY, setMouseY] = useState<NullableNumber>(null);
 
-  const [sSnappedPoint, setSnappedPoint] = useState(null);
+  const [sSnappedPoint, setSnappedPoint] = useState<NullablePoint>(null);
 
-  const rMainCanvasDiv = useRef(null);
+  const rMainCanvasDiv = useRef<HTMLDivElement>(null);
 
+  // setting the canvas dimensions in the page
   useEffect(() => {
+    if (!rMainCanvasDiv?.current) {
+      console.log(
+        '[Canvas - Error] : Cannot set client dimensions - Found null Ref'
+      );
+
+      return;
+    }
+
     const boundingRect = rMainCanvasDiv.current.getBoundingClientRect();
 
     setCanvasLeft(Math.round(boundingRect.left));
@@ -56,6 +76,14 @@ export default function Canvas(props) {
   }
 
   function handleMouseMove(evt) {
+    if (!sCanvasLeft || !sCanvasTop) {
+      console.log(
+        '[Canvas - Error] : MouseMove event failed - Client dimensions are null'
+      );
+
+      return;
+    }
+
     const instantX = evt.clientX - sCanvasLeft;
     const instantY = evt.clientY - sCanvasTop;
 
@@ -153,7 +181,9 @@ export default function Canvas(props) {
       if (!secondPoint.snapped) {
         newSavedPoints.push(secondPoint);
       } else {
-        secondPoint = sSnappedPoint;
+        if (sSnappedPoint) {
+          secondPoint = sSnappedPoint;
+        }
       }
 
       const newSavedLines = [
@@ -360,6 +390,17 @@ export default function Canvas(props) {
         <div className='absolute'>
           <span>{`Current Pos: X = ${sMouseX}, Y = ${sMouseY}`}</span>
         </div>
+
+        {/* debug */}
+        <div className='absolute mt-6'>
+          {!sMouseX || !sMouseY ? null : (
+            <span>{`Current World Pos: X = ${
+              sMouseX + (props.sCanvasCenterWorldX - props.sCanvasWidth / 2)
+            }, Y = ${
+              -sMouseY + (props.sCanvasCenterWorldY + props.sCanvasHeight / 2)
+            }`}</span>
+          )}
+        </div>
         {/* debug 2 */}
         <div className='absolute flex justify-end w-full'>
           <span>{`Currently Placing: ${props.sSelecting}`}</span>
@@ -491,8 +532,8 @@ export default function Canvas(props) {
         <div
           className='absolute w-1 h-1 bg-red-500 rounded-full'
           style={{
-            top: sSnappedPoint ? sSnappedPoint.y : sMouseY,
-            left: sSnappedPoint ? sSnappedPoint.x : sMouseX
+            top: (sSnappedPoint ? sSnappedPoint.y : sMouseY) ?? 0,
+            left: (sSnappedPoint ? sSnappedPoint.x : sMouseX) ?? 0
           }}
         />
       ) : props.sSelecting === 'text' ? (
@@ -501,8 +542,8 @@ export default function Canvas(props) {
         <div
           className='absolute w-1 h-1 bg-green-500 rounded-full'
           style={{
-            top: sSnappedPoint ? sSnappedPoint.y : sMouseY,
-            left: sSnappedPoint ? sSnappedPoint.x : sMouseX
+            top: (sSnappedPoint ? sSnappedPoint.y : sMouseY) ?? 0,
+            left: (sSnappedPoint ? sSnappedPoint.x : sMouseX) ?? 0
           }}
         />
       )}

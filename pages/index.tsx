@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 import HeaderToolbar from '../components/HeaderToolbar';
 
@@ -6,12 +6,14 @@ import Canvas from '../components/Canvas';
 
 import FooterToolbar from '../components/FooterToolbar';
 
+type SelectedState = null | 'line-first-point' | 'line-second-point' | string;
+
 export default function Home() {
   const [sGridSize, setGridSize] = useState(64);
   const [sCanvasWidth, setCanvasWidth] = useState(0);
   const [sCanvasHeight, setCanvasHeight] = useState(0);
 
-  const [sSelecting, setSelecting] = useState(null);
+  const [sSelecting, setSelecting] = useState<SelectedState>(null);
 
   const [sCachedPoints, setCachedPoints] = useState({
     tools: {
@@ -30,6 +32,9 @@ export default function Home() {
 
   const [sGridDimension, setGridDimension] = useState(1);
   const [sGridUnit, setGridUnit] = useState('m');
+
+  const [sCanvasCenterWorldX, setCanvasCenterWorldX] = useState(0);
+  const [sCanvasCenterWorldY, setCanvasCenterWorldY] = useState(0);
 
   const rExportCanvas = useRef(null);
 
@@ -86,6 +91,11 @@ export default function Home() {
       />
 
       <Canvas
+        // canvas center world pos
+        sCanvasCenterWorldX={sCanvasCenterWorldX}
+        fSetCanvasCenterWorldX={setCanvasCenterWorldX}
+        sCanvasCenterWorldY={sCanvasCenterWorldY}
+        fSetCanvasCenterWorldY={setCanvasCenterWorldY}
         // grid size
         sGridSize={sGridSize}
         // selecting state & setter

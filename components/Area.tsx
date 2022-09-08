@@ -1,4 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+
+type Position = {
+  x?: number;
+  y?: number;
+};
 
 export function ccw(p1, p2) {
   return p1.x * p2.y - p1.y * p2.x;
@@ -57,13 +62,12 @@ export function validate(points, lines) {
 export default function Area(props) {
   const [sIsValid, setIsValid] = useState(false);
 
-  const rAreaCanvas = useRef(null);
+  const rAreaCanvas = useRef<HTMLCanvasElement>(null);
 
-  const [sCG, setCG] = useState({ x: null, y: null });
+  const [sCG, setCG] = useState<Position>({ x: 0, y: 0 });
 
   // check if it's a valid polygon
   useEffect(() => {
-    console.log('lines', props.savedLines);
     const validation = validate(props.points, props.savedLines);
 
     if (!validation) {
@@ -72,9 +76,21 @@ export default function Area(props) {
       return;
     }
 
-    console.log('VALID');
+    if (rAreaCanvas?.current === null) {
+      console.log(
+        '[Area - Error]: Found null ref when trying to draw to the canvas'
+      );
+      return;
+    }
 
     const ctx = rAreaCanvas.current.getContext('2d');
+    if (ctx === null) {
+      console.log(
+        '[Area - Error]: Found null 2d Context when trying to draw to the canvas'
+      );
+      return;
+    }
+
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, props.sCanvasWidth, props.sCanvasHeight);
 
