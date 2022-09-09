@@ -22,6 +22,12 @@ export default function HeaderToolbar(props) {
     }
   }
 
+  function handlePanToolClick() {
+    console.log('Pan tool clicked');
+
+    props.fSetCanvasSelecting('pan');
+  }
+
   function handleTextToolClick() {
     console.log('Text tool clicked');
 
@@ -150,6 +156,7 @@ export default function HeaderToolbar(props) {
         <div className='flex flex-row items-center justify-center gap-2'>
           <Button text='/' fClick={handleLineToolClick} />
           <Button text='A' fClick={handleAreaToolClick} />
+          <Button text='P' fClick={handlePanToolClick} />
         </div>
       </div>
 

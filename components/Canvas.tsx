@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, SyntheticEvent } from 'react';
 
 import Line from './Line';
 import Area from './Area';
@@ -15,6 +15,13 @@ type Point = {
 
 type NullablePoint = Point | null;
 
+enum MouseButton {
+  NONE = 0,
+  LEFT = 0b1,
+  RIGHT = 0b10,
+  SCROLL = 0b100
+}
+
 export default function Canvas(props) {
   const [sCanvasLeft, setCanvasLeft] = useState<NullableNumber>(null);
   const [sCanvasTop, setCanvasTop] = useState<NullableNumber>(null);
@@ -25,6 +32,10 @@ export default function Canvas(props) {
   const [sSnappedPoint, setSnappedPoint] = useState<NullablePoint>(null);
 
   const rMainCanvasDiv = useRef<HTMLDivElement>(null);
+
+  function isDown(evt, targetButton: MouseButton) {
+    return evt.buttons | targetButton;
+  }
 
   // setting the canvas dimensions in the page
   useEffect(() => {
@@ -45,7 +56,7 @@ export default function Canvas(props) {
     props.fSetCanvasHeight(Math.round(boundingRect.height));
   }, []);
 
-  function snapToPoint(x, y, pointSet, maxDelta = 10) {
+  function snapToPoint(x: number, y: number, pointSet, maxDelta = 10) {
     if (!pointSet) {
       return;
     }
@@ -76,6 +87,7 @@ export default function Canvas(props) {
   }
 
   function handleMouseMove(evt) {
+    // handle null dimensions
     if (!sCanvasLeft || !sCanvasTop) {
       console.log(
         '[Canvas - Error] : MouseMove event failed - Client dimensions are null'
@@ -116,6 +128,9 @@ export default function Canvas(props) {
       ];
 
       props.fSetCachedLines(newCachedLines);
+    }
+
+    if (props.sSelecting === 'pan' && isDown(evt, MouseButton.LEFT)) {
     }
   }
 
@@ -538,6 +553,29 @@ export default function Canvas(props) {
         />
       ) : props.sSelecting === 'text' ? (
         <Text x={sMouseX} y={sMouseY} />
+      ) : props.sSelecting === 'pan' ? (
+        <div
+          className='absolute'
+          style={{
+            top: (sSnappedPoint ? sSnappedPoint.y : sMouseY) ?? 0,
+            left: (sSnappedPoint ? sSnappedPoint.x : sMouseX) ?? 0
+          }}
+        >
+          <svg
+            xmlns='http://www.w3.org/2000/svg'
+            fill='none'
+            viewBox='0 0 24 24'
+            strokeWidth={1.5}
+            stroke='#000'
+            className='w-6 h-6'
+          >
+            <path
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              d='M12 4.5v15m7.5-7.5h-15'
+            />
+          </svg>
+        </div>
       ) : (
         <div
           className='absolute w-1 h-1 bg-green-500 rounded-full'
