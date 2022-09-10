@@ -1,9 +1,36 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { custom } from '../types/t';
 
-export default function Line(props) {
+type ComponentProps = {
+  first: custom.CachedPoint | custom.SavedPoint;
+  second: custom.CachedPoint | custom.SavedPoint;
+  fChangeSavedPointData: any; //todo figure this one out
+  canvasParams: custom.CanvasParams;
+
+  pixelLengthToUnits: (pixelLength: number) => number;
+  unitLengthToPixels: (unitLength: number) => number;
+  screenToWorld: (value: custom.PixelSpacePoint) => custom.WorldSpacePoint;
+  worldToScreen: (value: custom.WorldSpacePoint) => custom.PixelSpacePoint;
+};
+
+export default function Line({
+  first,
+  second,
+  fChangeSavedPointData,
+  canvasParams,
+  pixelLengthToUnits,
+  unitLengthToPixels,
+  worldToScreen
+}: ComponentProps) {
   const [sLength, setLength] = useState(0);
-  const [sUnitLength, setUnitLength] = useState(0);
+  const [sWorldLength, setWorldLength] = useState(0);
   const [sAngle, setAngle] = useState(0);
+  const [sWorldAngle, setWorldAngle] = useState(0);
+
+  const [sFirstPointPos, setFirstPointPos] =
+    useState<custom.PixelSpacePoint>(null);
+  const [sSecondPointPos, setSecondPointPos] =
+    useState<custom.PixelSpacePoint>(null);
 
   const [sIsLengthInputVisible, setIsLengthInputVisible] = useState(false);
   const [sIsAngleInputVisible, setIsAngleInputVisible] = useState(false);
@@ -11,89 +38,91 @@ export default function Line(props) {
   const refLengthInput = useRef(null);
   const refAngleInput = useRef(null);
 
-  const pixelsToUnits = useCallback(
-    (lengthInPixels) => {
-      return props.sGridUnit === 'px'
-        ? lengthInPixels
-        : (lengthInPixels / (props.sCanvasWidth / props.sGridSize)) *
-            props.sGridDimension;
-    },
-    [props.sGridUnit, props.sCanvasWidth, props.sGridSize, props.sGridDimension]
-  );
+  useEffect(() => {
+    // console.log(`Changed first: (x: ${first.x}, y: ${first.y})`);
+    // console.log(`Changed second: (x: ${second.x}, y: ${second.y})`);
+    //todo trigger this at the right time
 
-  const unitsToPixels = useCallback(
-    (lengthInUnits) => {
-      return props.sGridUnit === 'px'
-        ? lengthInUnits
-        : (lengthInUnits / props.sGridDimension) *
-            (props.sCanvasWidth / props.sGridSize);
-    },
-    [props.sGridUnit, props.sCanvasWidth, props.sGridSize, props.sGridDimension]
-  );
+    const xWorldDelta = second.x - first.x;
+    const yWorldDelta = second.y - first.y;
+
+    const firstPointPos = worldToScreen({
+      x: first.x,
+      y: first.y
+    });
+    setFirstPointPos(firstPointPos);
+
+    const secondPointPos = worldToScreen({
+      x: second.x,
+      y: second.y
+    });
+    setSecondPointPos(secondPointPos);
+
+    const xScreenDelta = secondPointPos.x - firstPointPos.x;
+    const yScreenDelta = secondPointPos.y - firstPointPos.y;
+
+    const worldLength = Math.sqrt(
+      xWorldDelta * xWorldDelta + yWorldDelta * yWorldDelta
+    );
+
+    const worldAngle = (Math.atan2(yWorldDelta, xWorldDelta) * 180) / Math.PI;
+    const screenAngle =
+      (Math.atan2(yScreenDelta, xScreenDelta) * 180) / Math.PI;
+
+    const pixelLength = unitLengthToPixels(worldLength);
+
+    setLength(pixelLength);
+    setWorldLength(worldLength);
+    setAngle(screenAngle);
+    setWorldAngle(worldAngle);
+  }, [first, second, pixelLengthToUnits, unitLengthToPixels, worldToScreen]);
 
   useEffect(() => {
-    console.log(`Changed first: (x: ${props.first.x}, y: ${props.first.y})`);
-    console.log(`Changed second: (x: ${props.second.x}, y: ${props.second.y})`);
-    const xDelta = props.second.x - props.first.x;
-    const yDelta = props.second.y - props.first.y;
-
-    const lengthInPixels = Math.sqrt(xDelta * xDelta + yDelta * yDelta);
-
-    const angleDeg = (Math.atan2(yDelta, xDelta) * 180) / Math.PI;
-
-    const lengthInUnits = pixelsToUnits(lengthInPixels);
-
-    setLength(lengthInPixels);
-    setUnitLength(lengthInUnits);
-    setAngle(angleDeg);
-  }, [props.first, props.second, pixelsToUnits]);
-
-  useEffect(() => {
-    refLengthInput.current.value = sUnitLength.toFixed(2);
-    refAngleInput.current.value = sAngle.toFixed(2);
-  }, [sUnitLength, sAngle]);
+    refLengthInput.current.value = sWorldLength.toFixed(2);
+    refAngleInput.current.value = sWorldAngle.toFixed(2);
+  }, [sWorldLength, sWorldAngle]);
 
   function handleLengthBlur(evt) {
-    const newLength = parseFloat(evt.target.value);
-    if (isNaN(newLength)) {
+    const newWorldLength = parseFloat(evt.target.value);
+    if (isNaN(newWorldLength)) {
       return;
     }
 
     console.log(
-      `New length: ${newLength} ${props.sGridUnit} @ ${props.sGridDimension} / cell`
+      `[Line - Info] Changing World Length: ${newWorldLength}${canvasParams.gridUnit.name} @ ${canvasParams.worldUnitsPerCell} / cell`
     );
 
-    const newLengthInPixels = unitsToPixels(newLength);
-
-    console.log(`New length: ${newLengthInPixels} pixels`);
-
     const newSecondX =
-      props.first.x + Math.cos((sAngle * Math.PI) / 180) * newLengthInPixels;
+      first.x + Math.cos((sWorldAngle * Math.PI) / 180) * newWorldLength;
+
     const newSecondY =
-      props.first.y + Math.sin((sAngle * Math.PI) / 180) * newLengthInPixels;
+      first.y + Math.sin((sWorldAngle * Math.PI) / 180) * newWorldLength;
 
-    console.log(`Old first: (x: ${props.first.x}, y: ${props.first.y})`);
-    console.log(`New second: (x: ${newSecondX}, y: ${newSecondY})`);
-
-    props.fChangeSavedPointData(props.second.name, newSecondX, newSecondY);
+    fChangeSavedPointData(second.name, newSecondX, newSecondY);
 
     setIsLengthInputVisible(false);
+
+    console.log(`Old first: (x: ${first.x}, y: ${first.y})`);
+    console.log(`New second: (x: ${newSecondX}, y: ${newSecondY})`);
   }
 
   function handleAngleBlur(evt) {
-    const newAngle = parseFloat(evt.target.value);
-    if (isNaN(newAngle)) {
+    const newWorldAngle = parseFloat(evt.target.value);
+    if (isNaN(newWorldAngle)) {
       return;
     }
 
     const newSecondX =
-      props.first.x + Math.cos((newAngle * Math.PI) / 180) * sLength;
+      first.x + Math.cos((newWorldAngle * Math.PI) / 180) * sWorldLength;
     const newSecondY =
-      props.first.y + Math.sin((newAngle * Math.PI) / 180) * sLength;
+      first.y + Math.sin((newWorldAngle * Math.PI) / 180) * sWorldLength;
 
-    props.fChangeSavedPointData(props.second.name, newSecondX, newSecondY);
+    fChangeSavedPointData(second.name, newSecondX, newSecondY);
 
     setIsAngleInputVisible(false);
+
+    console.log(`Old first: (x: ${first.x}, y: ${first.y})`);
+    console.log(`New second: (x: ${newSecondX}, y: ${newSecondY})`);
   }
 
   //* autofocus inputs
@@ -112,11 +141,11 @@ export default function Line(props) {
   return (
     <div
       className={`absolute text-center origin-bottom-left ${
-        sAngle % 90 === 0 ? 'bg-green-600' : 'bg-red-600'
+        sWorldAngle % 90 === 0 ? 'bg-green-600' : 'bg-red-600'
       }`}
       style={{
-        top: props.first.y + 2,
-        left: props.first.x + 2,
+        top: sFirstPointPos?.y ?? 0 + 2,
+        left: sFirstPointPos?.x ?? 0 + 2,
         width: sLength,
         height: sAngle % 90 === 0 ? 2 : 1,
         transform: `rotate(${sAngle}deg)`
@@ -132,9 +161,8 @@ export default function Line(props) {
           className='relative'
           onClick={() => setIsLengthInputVisible(true)}
         >
-          {sUnitLength.toFixed(2)} {props.sGridUnit}
+          {sWorldLength.toFixed(2)} {canvasParams.gridUnit.name}
           <input
-            // onBlur={() => setIsLengthInputVisible(false)}
             type='text'
             step={1}
             className='absolute bottom-0 left-0 w-20 bg-gray-100 outline-none caret-black'
@@ -162,7 +190,7 @@ export default function Line(props) {
             textAlign: Math.abs(sAngle) > 90 ? 'right' : 'left'
           }}
         >
-          {sAngle.toFixed(2)} deg
+          {sWorldAngle.toFixed(2)} deg
           <input
             type='text'
             step={1}

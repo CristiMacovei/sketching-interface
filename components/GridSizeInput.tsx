@@ -11,12 +11,7 @@ export default function GridSizeInput(props) {
     }
 
     const unitSelect = rUnitSelect.current;
-    if (
-      unitSelect &&
-      (props.sGridUnit === 'px' ||
-        props.sGridUnit === 'm' ||
-        props.sGridUnit === 'm')
-    ) {
+    if (unitSelect && (props.sGridUnit === 'm' || props.sGridUnit === 'ft')) {
       unitSelect.value = props.sGridUnit;
     }
   }, [props.sGridDimension, props.sGridUnit]);
@@ -45,7 +40,12 @@ export default function GridSizeInput(props) {
   function handleUnitSelectChange(evt) {
     const unitSelect = rUnitSelect.current;
     if (unitSelect) {
-      props.setGridUnit(unitSelect.value);
+      const longName = unitSelect.value === 'ft' ? 'Feet' : 'Meters';
+
+      props.setGridUnit({
+        name: unitSelect.value,
+        longName
+      });
     }
 
     console.log('handleUnitSelectChange', unitSelect.value);
@@ -60,7 +60,6 @@ export default function GridSizeInput(props) {
       >
         <option value='m'>Meters</option>
         <option value='ft'>Feet</option>
-        <option value='px'>Pixels</option>
       </select>
 
       <input
@@ -68,11 +67,8 @@ export default function GridSizeInput(props) {
         className={`w-2/5 p-2 mr-2 bg-white border border-gray-400 rounded-lg outline-none`}
         ref={rDimensionInput}
         onChange={handleDimensionInputChange}
-        disabled={props.sGridUnit === 'px'}
       />
-      <span className='w-1/5'>
-        {props.sGridUnit === 'px' ? '' : `${props.sGridUnit} / cell`}
-      </span>
+      <span className='w-1/5'>{`${props.sGridUnit.name} / cell`}</span>
     </div>
   );
 }

@@ -1,23 +1,35 @@
 import { useState, useRef, useEffect } from 'react';
 
-export default function Text(props) {
+import { custom } from '../types/t';
+
+type ComponentProps = {
+  x: number;
+  y: number;
+  value: string;
+  saved: boolean;
+  name?: string;
+  fChangeSavedTextValue?: (textName: string, newValue: string) => void;
+  worldToScreen: (world: custom.WorldSpacePoint) => custom.PixelSpacePoint;
+};
+
+export default function Text(props: ComponentProps) {
   const [sIsInputVisible, setIsInputVisible] = useState(false);
 
   const rInput = useRef(null);
 
   useEffect(() => {
     if (sIsInputVisible) {
-      rInput.current.value = props.text;
+      rInput.current.value = props.value;
       rInput.current.focus();
     }
-  }, [sIsInputVisible, props.text]);
+  }, [sIsInputVisible, props.value]);
 
   return (
     <div
       className='absolute z-30'
       style={{
-        top: props.y,
-        left: props.x
+        top: props.worldToScreen({ x: props.x, y: props.y }).y,
+        left: props.worldToScreen({ x: props.x, y: props.y }).x
       }}
     >
       {props.saved ? (
@@ -42,7 +54,7 @@ export default function Text(props) {
               setIsInputVisible(true);
             }}
           >
-            {props.text}
+            {props.value}
           </span>
         )
       ) : (

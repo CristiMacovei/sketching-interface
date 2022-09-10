@@ -3,55 +3,72 @@ import React from 'react';
 import Dropdown from './Dropdown';
 import Button from './Button';
 
-import { ccw, calcArea } from './Area';
+import { calcArea } from './Area';
 
-export default function HeaderToolbar(props) {
+import { custom } from '../types/t';
+
+type ComponentProps = {
+  setSelectionMode: (value: custom.SelectionMode) => void;
+  canvasParams: custom.CanvasParams;
+
+  // unit functions
+  unitLengthToPixels: (unitLength: number) => number;
+  pixelLengthToUnits: (pixelLength: number) => number;
+  screenToWorld: (screen: custom.PixelSpacePoint) => custom.WorldSpacePoint;
+  worldToScreen: (world: custom.WorldSpacePoint) => custom.PixelSpacePoint;
+
+  savedPoints: custom.SavedPoint[];
+  savedLines: custom.SavedLine[];
+  savedAreas: custom.Area[];
+  savedTexts: custom.Text[];
+  refExportCanvas: React.MutableRefObject<HTMLCanvasElement>;
+};
+
+export default function HeaderToolbar(props: ComponentProps) {
   function handleLineToolClick() {
     console.log('Line tool clicked');
 
-    if (typeof props.fSetCanvasSelecting === 'function') {
-      props.fSetCanvasSelecting('line-first-point');
-    }
+    props.setSelectionMode('line-first-point');
   }
 
   function handleAreaToolClick() {
     console.log('Area tool clicked');
 
-    if (typeof props.fSetCanvasSelecting === 'function') {
-      props.fSetCanvasSelecting('area-point-1');
-    }
+    props.setSelectionMode('area-point-1');
   }
 
   function handlePanToolClick() {
     console.log('Pan tool clicked');
 
-    props.fSetCanvasSelecting('pan');
+    props.setSelectionMode('pan');
   }
 
   function handleTextToolClick() {
     console.log('Text tool clicked');
 
-    if (typeof props.fSetCanvasSelecting === 'function') {
-      props.fSetCanvasSelecting('text');
-    }
+    props.setSelectionMode('text');
   }
 
   function exportToPNG() {
     console.log(
-      props.sSavedPoints,
-      props.sSavedLines,
-      props.sSavedAreas,
-      props.sSavedTexts
+      props.savedPoints,
+      props.savedLines,
+      props.savedAreas,
+      props.savedTexts
     );
 
-    console.log('Points', props.sSavedPoints);
-    console.log('Lines', props.sSavedLines);
-    console.log('Areas', props.sSavedAreas);
-    console.log('Texts', props.sSavedTexts);
+    console.log('Points', props.savedPoints);
+    console.log('Lines', props.savedLines);
+    console.log('Areas', props.savedAreas);
+    console.log('Texts', props.savedTexts);
 
-    console.log('Dimensions', props.sCanvasWidth, props.sCanvasHeight);
+    console.log(
+      'Dimensions',
+      props.canvasParams.width,
+      props.canvasParams.height
+    );
 
-    const tmpCanvas = props.rExportCanvas.current;
+    const tmpCanvas = props.refExportCanvas.current;
     console.log(tmpCanvas);
 
     const ctx = tmpCanvas.getContext('2d');
@@ -59,48 +76,72 @@ export default function HeaderToolbar(props) {
     ctx.fillRect(0, 0, tmpCanvas.width, tmpCanvas.height);
 
     ctx.fillStyle = 'red';
-    props.sSavedPoints.forEach((p) => {
+    props.savedPoints.forEach((p) => {
+      const screenPos = props.worldToScreen({
+        x: p.x,
+        y: p.y
+      });
+
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 4, 0, 2 * Math.PI);
+      ctx.arc(screenPos.x, screenPos.y, 4, 0, 2 * Math.PI);
       ctx.fill();
       ctx.closePath();
     });
 
     ctx.strokeStyle = 'red';
-    props.sSavedLines.forEach((l) => {
+    props.savedLines.forEach((l) => {
+      const firstScreenPos = props.worldToScreen({
+        x: l.first.x,
+        y: l.first.y
+      });
+
+      const secondScreenPos = props.worldToScreen({
+        x: l.second.x,
+        y: l.second.y
+      });
+
       ctx.beginPath();
-      ctx.moveTo(l.first.x, l.first.y);
-      ctx.lineTo(l.second.x, l.second.y);
+      ctx.moveTo(firstScreenPos.x, firstScreenPos.y);
+      ctx.lineTo(secondScreenPos.x, secondScreenPos.y);
       ctx.closePath();
       ctx.stroke();
 
       // draw the text
       const xDelta = l.second.x - l.first.x;
       const yDelta = l.second.y - l.first.y;
-      const atan = Math.atan2(yDelta, xDelta);
-      const lengthInPixels = Math.sqrt(xDelta * xDelta + yDelta * yDelta);
-      const lengthInUnits =
-        props.sGridUnit === 'px'
-          ? lengthInPixels
-          : (lengthInPixels / (props.sCanvasWidth / props.sGridSize)) *
-            props.sGridDimension;
+      const length = Math.sqrt(xDelta * xDelta + yDelta * yDelta);
+
+      const xScreenDelta = secondScreenPos.x - firstScreenPos.x;
+      const yScreenDelta = secondScreenPos.y - firstScreenPos.y;
+      const atan = Math.atan2(yScreenDelta, xScreenDelta);
 
       ctx.save();
-      ctx.translate((l.first.x + l.second.x) / 2, (l.first.y + l.second.y) / 2);
+      ctx.translate(
+        (firstScreenPos.x + secondScreenPos.x) / 2,
+        (firstScreenPos.y + secondScreenPos.y) / 2
+      );
       ctx.rotate(Math.abs(atan) > Math.PI / 2 ? atan + Math.PI : atan);
       ctx.textAlign = 'center';
-      ctx.fillText(`${lengthInUnits.toFixed(2)} ${props.sGridUnit}`, 0, -10);
+      ctx.fillText(
+        `${length.toFixed(2)} ${props.canvasParams.gridUnit.name}`,
+        0,
+        -10
+      );
       ctx.restore();
     });
 
     ctx.save();
     ctx.globalAlpha = 0.2;
-    props.sSavedAreas.forEach((a) => {
+    props.savedAreas.forEach((a) => {
+      const pointPositions = a.points.map(({ x, y }) =>
+        props.worldToScreen({ x, y })
+      );
+
       ctx.fillStyle = '#00ff00';
       ctx.beginPath();
-      ctx.moveTo(a.points[0].x, a.points[0].y);
-      for (let i = 1; i < a.points.length; ++i) {
-        ctx.lineTo(a.points[i].x, a.points[i].y);
+      ctx.moveTo(pointPositions[0].x, pointPositions[0].y);
+      for (let i = 1; i < pointPositions.length; ++i) {
+        ctx.lineTo(pointPositions[i].x, pointPositions[i].y);
       }
       ctx.closePath();
       ctx.fill();
@@ -110,22 +151,30 @@ export default function HeaderToolbar(props) {
       const yGravityCenter =
         a.points.reduce((acc, point) => acc + point.y, 0) / a.points.length;
 
+      const { x: xScreenGravityCenter, y: yScreenGravityCenter } =
+        props.worldToScreen({
+          x: xGravityCenter,
+          y: yGravityCenter
+        });
+
       ctx.globalAlpha = 0.666;
       ctx.fillStyle = '#224422';
       ctx.fillText(
-        `${calcArea(
-          a.points,
-          (props.sGridDimension * props.sGridSize) / props.sCanvasWidth
-        ).toFixed(2)} ${props.sGridUnit}²`,
-        xGravityCenter,
-        yGravityCenter
+        `${calcArea(a.points).toFixed(2)} ${props.canvasParams.gridUnit.name}²`,
+        xScreenGravityCenter,
+        yScreenGravityCenter
       );
     });
     ctx.restore();
 
     ctx.fillStyle = '#000'; // black
-    props.sSavedTexts.forEach((t) => {
-      ctx.fillText(t.text, t.x, t.y);
+    props.savedTexts.forEach((t) => {
+      const screenPos = props.worldToScreen({
+        x: t.xTop,
+        y: t.yTop
+      });
+
+      ctx.fillText(t.value, screenPos.x, screenPos.y);
     });
 
     const dataURL = tmpCanvas.toDataURL();

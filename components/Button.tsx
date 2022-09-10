@@ -1,11 +1,20 @@
-export default function Button(props) {
+import { PropsWithChildren } from 'react';
+
+type ComponentProps = {
+  fClick: (evt: any) => void;
+  text?: string;
+  textAlign?: string;
+  className?: string;
+};
+
+export default function Button(props: PropsWithChildren<ComponentProps>) {
   function handleClick(evt) {
     evt.preventDefault();
 
     console.log('Button clicked');
 
     if (typeof props.fClick === 'function') {
-      props.fClick();
+      props.fClick(evt);
     }
   }
 

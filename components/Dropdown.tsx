@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 export default function Dropdown(props) {
-  const [sIsExpanded, setIsExpanded] = useState();
+  const [sIsExpanded, setIsExpanded] = useState(false);
 
   return (
     <div className='absolute top-0 z-50 flex flex-col items-center justify-center bg-gray-300 rounded-md'>

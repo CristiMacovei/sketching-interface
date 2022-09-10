@@ -1,39 +1,82 @@
-import React, { useEffect, useState, useRef, SyntheticEvent } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 import Line from './Line';
 import Area from './Area';
 import Text from './Text';
 
-type NullableNumber = number | null;
+import { custom } from '../types/t';
 
-type Point = {
-  x: number;
-  y: number;
-  name: string;
-  snapped: boolean;
+type Props = {
+  params: custom.CanvasParams;
+
+  // unit functions
+  unitLengthToPixels: (unitLength: number) => number;
+  pixelLengthToUnits: (pixelLength: number) => number;
+  screenToWorld: (screen: custom.PixelSpacePoint) => custom.WorldSpacePoint;
+  worldToScreen: (world: custom.WorldSpacePoint) => custom.PixelSpacePoint;
+
+  mode: custom.SelectionMode;
+  setMode: (value: custom.SelectionMode) => void;
+
+  cachedPoints: custom.CachedPointStorage;
+  setCachedPoints: (value: custom.CachedPointStorage) => void;
+
+  cachedLines: custom.CachedLine[];
+  setCachedLines: (value: custom.CachedLine[]) => void;
+
+  cachedText: custom.Text;
+  setCachedText: (value: custom.Text) => void;
+
+  savedPoints: custom.SavedPoint[];
+  setSavedPoints: (value: custom.SavedPoint[]) => void;
+
+  savedLines: custom.SavedLine[];
+  setSavedLines: (value: custom.SavedLine[]) => void;
+
+  savedAreas: custom.Area[];
+  setSavedAreas: (value: custom.Area[]) => void;
+
+  savedTexts: custom.Text[];
+  setSavedTexts: (value: custom.Text[]) => void;
+
+  fClearCache: () => void;
+
+  refExportCanvas: React.MutableRefObject<HTMLCanvasElement>;
 };
 
-type NullablePoint = Point | null;
+export default function Canvas({
+  params,
+  unitLengthToPixels,
+  pixelLengthToUnits,
+  screenToWorld,
+  worldToScreen,
+  mode,
+  setMode,
+  cachedPoints,
+  setCachedPoints,
+  cachedLines,
+  setCachedLines,
+  cachedText,
+  setCachedText,
+  savedPoints,
+  setSavedPoints,
+  savedLines,
+  setSavedLines,
+  savedAreas,
+  setSavedAreas,
+  savedTexts,
+  setSavedTexts,
+  fClearCache,
+  refExportCanvas
+}: Props) {
+  const [sMouseX, setMouseX] = useState<number>(null);
+  const [sMouseY, setMouseY] = useState<number>(null);
 
-enum MouseButton {
-  NONE = 0,
-  LEFT = 0b1,
-  RIGHT = 0b10,
-  SCROLL = 0b100
-}
-
-export default function Canvas(props) {
-  const [sCanvasLeft, setCanvasLeft] = useState<NullableNumber>(null);
-  const [sCanvasTop, setCanvasTop] = useState<NullableNumber>(null);
-
-  const [sMouseX, setMouseX] = useState<NullableNumber>(null);
-  const [sMouseY, setMouseY] = useState<NullableNumber>(null);
-
-  const [sSnappedPoint, setSnappedPoint] = useState<NullablePoint>(null);
+  const [sSnappedPoint, setSnappedPoint] = useState<custom.SavedPoint>(null); // snapping always goes to a snapped point
 
   const rMainCanvasDiv = useRef<HTMLDivElement>(null);
 
-  function isDown(evt, targetButton: MouseButton) {
+  function isMouseButtonDown(evt, targetButton: custom.MouseButtonBits) {
     return evt.buttons | targetButton;
   }
 
@@ -49,46 +92,53 @@ export default function Canvas(props) {
 
     const boundingRect = rMainCanvasDiv.current.getBoundingClientRect();
 
-    setCanvasLeft(Math.round(boundingRect.left));
-    setCanvasTop(Math.round(boundingRect.top));
+    params.setScreenTopLeftX(Math.round(boundingRect.left));
+    params.setScreenTopLeftY(Math.round(boundingRect.top));
 
-    props.fSetCanvasWidth(Math.round(boundingRect.width));
-    props.fSetCanvasHeight(Math.round(boundingRect.height));
-  }, []);
+    params.setWidth(Math.round(boundingRect.width));
+    params.setHeight(Math.round(boundingRect.height));
+  }, [params]);
 
-  function snapToPoint(x: number, y: number, pointSet, maxDelta = 10) {
-    if (!pointSet) {
+  function snapToPoint(
+    x: number,
+    y: number,
+    targets: custom.SavedPoint[],
+    maxDelta = 10
+  ) {
+    if (!targets) {
       return;
     }
 
-    const closestPoint = pointSet
-      .map((point) => {
-        const xDelta = Math.abs(point.x - x);
-        const yDelta = Math.abs(point.y - y);
+    const closestPoint =
+      targets
+        .map((point) => {
+          const { x: pointScreenX, y: pointScreenY } = worldToScreen({
+            x: point.x,
+            y: point.y
+          });
 
-        const deltaSquared = xDelta * xDelta + yDelta * yDelta;
+          const xDelta = Math.abs(pointScreenX - x);
+          const yDelta = Math.abs(pointScreenY - y);
 
-        return [point, deltaSquared];
-      })
-      .filter(([point, deltaSquared]) => deltaSquared < maxDelta * maxDelta)
-      .sort(
-        ([pointA, deltaSquaredA], [pointB, deltaSquaredB]) =>
-          deltaSquaredA - deltaSquaredB
-      )
-      .map(([point, deltaSquared]) => point)?.[0];
+          const deltaSquared = xDelta * xDelta + yDelta * yDelta;
 
-    if (closestPoint) {
-      setSnappedPoint(closestPoint);
+          return { point, deltaSquared };
+        })
+        .filter(({ deltaSquared }) => deltaSquared < maxDelta * maxDelta)
+        .sort(
+          ({ deltaSquared: deltaSquaredA }, { deltaSquared: deltaSquaredB }) =>
+            deltaSquaredA - deltaSquaredB
+        )
+        .map(({ point }) => point)?.[0] ?? null;
 
-      return closestPoint;
-    } else {
-      setSnappedPoint(null);
-    }
+    setSnappedPoint(closestPoint);
+
+    return closestPoint;
   }
 
   function handleMouseMove(evt) {
     // handle null dimensions
-    if (!sCanvasLeft || !sCanvasTop) {
+    if (!params.screenTopLeftX || !params.screenTopLeftY) {
       console.log(
         '[Canvas - Error] : MouseMove event failed - Client dimensions are null'
       );
@@ -96,62 +146,103 @@ export default function Canvas(props) {
       return;
     }
 
-    const instantX = evt.clientX - sCanvasLeft;
-    const instantY = evt.clientY - sCanvasTop;
+    const instantScreenX = evt.clientX - params.screenTopLeftX;
+    const instantScreenY = evt.clientY - params.screenTopLeftY;
 
     const closestPoint = snapToPoint(
-      instantX,
-      instantY,
-      props.sSavedPoints,
+      instantScreenX,
+      instantScreenY,
+      savedPoints,
       20
     );
 
-    setMouseX(instantX);
-    setMouseY(instantY);
+    const xScreenWithSnap = closestPoint ? closestPoint.x : instantScreenX;
+    const yScreenWithSnap = closestPoint ? closestPoint.y : instantScreenY;
 
-    const xWithSnap = closestPoint ? closestPoint.x : instantX;
-    const yWithSnap = closestPoint ? closestPoint.y : instantY;
+    const { x: worldX, y: worldY } = screenToWorld({
+      x: xScreenWithSnap,
+      y: yScreenWithSnap
+    });
+
+    setMouseX(xScreenWithSnap);
+    setMouseY(yScreenWithSnap);
 
     // save cached line if we're selecting the second point
-    if (props.sSelecting === 'line-second-point') {
+    if (mode === 'line-second-point') {
       const newCachedLines = [
         {
-          first: {
-            x: props.sCachedPoints.tools.line[0].x,
-            y: props.sCachedPoints.tools.line[0].y
-          },
-          second: {
-            x: xWithSnap,
-            y: yWithSnap
-          }
+          first: cachedPoints.tools.line[0],
+          second: closestPoint
+            ? {
+                x: closestPoint.x,
+                y: closestPoint.y,
+                name: closestPoint.name,
+                snappedPoint: closestPoint
+              }
+            : {
+                x: worldX,
+                y: worldY,
+                name: 'unnamed',
+                snappedPoint: null
+              }
         }
       ];
 
-      props.fSetCachedLines(newCachedLines);
+      setCachedLines(newCachedLines);
     }
 
-    if (props.sSelecting === 'pan' && isDown(evt, MouseButton.LEFT)) {
+    if (
+      mode === 'pan' &&
+      isMouseButtonDown(evt, custom.MouseButtonBits.LEFT_CLICK)
+    ) {
+      console.log('Dragging with leftclick down');
     }
   }
 
   function handleMouseClick(evt) {
-    if (props.sSelecting === null) {
+    if (mode === null) {
       return;
     }
 
+    const instantScreenX = evt.clientX - params.screenTopLeftX;
+    const instantScreenY = evt.clientY - params.screenTopLeftY;
+
+    const closestPoint = snapToPoint(
+      instantScreenX,
+      instantScreenY,
+      savedPoints,
+      20
+    );
+
+    const { x: instantWorldX, y: instantWorldY } = screenToWorld({
+      x: instantScreenX,
+      y: instantScreenY
+    });
+
+    const worldX = closestPoint ? closestPoint.x : instantWorldX;
+    const worldY = closestPoint ? closestPoint.y : instantWorldY;
+
+    const { x: xScreenWithSnap, y: yScreenWithSnap } = worldToScreen({
+      x: worldX,
+      y: worldY
+    });
+
+    setMouseX(xScreenWithSnap);
+    setMouseY(yScreenWithSnap);
+
     //* line tool
     // cache the first point
-    if (props.sSelecting === 'line-first-point') {
+    if (mode === 'line-first-point') {
       const newCachedPoints = {
-        ...props.sCachedPoints,
+        ...cachedPoints,
         tools: {
-          ...props.sCachedPoints.tools,
+          ...cachedPoints.tools,
           line: [
             {
-              x: sSnappedPoint ? sSnappedPoint.x : sMouseX,
-              y: sSnappedPoint ? sSnappedPoint.y : sMouseY,
-              snapped: sSnappedPoint ? true : false,
-              snappedPoint: sSnappedPoint
+              x: worldX,
+              y: worldY,
+              name: 'unnamed',
+              snappedPoint: closestPoint
             }
           ]
         }
@@ -159,148 +250,138 @@ export default function Canvas(props) {
 
       console.log(newCachedPoints);
 
-      props.fSetCachedPoints(newCachedPoints);
-      props.fSetSelecting('line-second-point');
+      setCachedPoints(newCachedPoints);
+      setMode('line-second-point');
     }
     // save both of the points
-    else if (props.sSelecting === 'line-second-point') {
-      const cachedFirstPoint = props.sCachedPoints.tools.line[0];
+    else if (mode === 'line-second-point') {
+      // console.log('QWE', cachedPoints);
+      const cachedFirstPoint = cachedPoints.tools.line[0];
 
-      const initialLen = props.sSavedPoints.length;
-      //todo maybe come up with better names?
-      const name1 = `A-${initialLen + 1}`;
-      const name2 = `A-${initialLen + 2}`;
+      // todo convert these to world coordinates
+      const isFirstPointSnapped =
+        cachedFirstPoint?.snappedPoint !== null &&
+        typeof cachedFirstPoint?.snappedPoint !== 'undefined';
 
-      let firstPoint = {
-        x: cachedFirstPoint.x,
-        y: cachedFirstPoint.y,
-        name: name1,
-        snapped: cachedFirstPoint.snapped
-      };
+      const isSecondPointSnapped =
+        closestPoint !== null && typeof closestPoint !== 'undefined';
 
-      let secondPoint = {
-        x: sSnappedPoint ? sSnappedPoint.x : sMouseX,
-        y: sSnappedPoint ? sSnappedPoint.y : sMouseY,
-        name: name2,
-        snapped: sSnappedPoint ? true : false
-      };
+      let firstPoint: custom.SavedPoint = isFirstPointSnapped
+        ? cachedFirstPoint.snappedPoint
+        : {
+            x: cachedFirstPoint.x,
+            y: cachedFirstPoint.y,
+            name: `point-${Date.now()}1`
+          };
 
-      const newSavedPoints = [...props.sSavedPoints];
+      let secondPoint: custom.SavedPoint = isSecondPointSnapped
+        ? closestPoint
+        : {
+            x: worldX,
+            y: worldY,
+            name: `point-${Date.now()}2`
+          };
 
-      if (!firstPoint.snapped) {
+      const newSavedPoints = [...savedPoints];
+
+      if (!isFirstPointSnapped) {
         newSavedPoints.push(firstPoint);
-      } else {
-        firstPoint = cachedFirstPoint.snappedPoint;
       }
 
-      if (!secondPoint.snapped) {
+      if (!isSecondPointSnapped) {
         newSavedPoints.push(secondPoint);
-      } else {
-        if (sSnappedPoint) {
-          secondPoint = sSnappedPoint;
-        }
       }
 
       const newSavedLines = [
-        ...props.sSavedLines,
+        ...savedLines,
         {
           first: firstPoint,
           second: secondPoint
         }
       ];
 
-      const newCachedPoints = {
-        ...props.sCachedPoints,
-        tools: {
-          ...props.sCachedPoints.tools,
-          line: []
-        }
-      };
-
       // remove select mode
-      props.fSetSelecting(null);
+      setMode(null);
 
-      // clear cached line points
-      props.fSetCachedPoints(newCachedPoints);
-      props.fSetCachedLines([]);
+      // clear cache
+      fClearCache();
 
       // save points & line
-      props.fSetSavedPoints(newSavedPoints);
-      props.fSetSavedLines(newSavedLines);
+      setSavedPoints(newSavedPoints);
+      setSavedLines(newSavedLines);
     }
 
     //* area tool
-    if (props.sSelecting.startsWith('area-point-')) {
-      // save it
-      if (!sSnappedPoint) {
+    if (mode.startsWith('area-point-')) {
+      // if it doesn't snap, area is done; save it
+      if (!closestPoint) {
+        //todo verify if it's valid
         const newSavedAreas = [
-          ...props.sSavedAreas,
+          ...savedAreas,
           {
-            points: props.sCachedPoints.tools.area
+            points: cachedPoints.tools.area
           }
         ];
 
         console.log('SAVING');
 
-        props.fSetSavedAreas(newSavedAreas);
+        setSavedAreas(newSavedAreas);
 
-        props.fSetSelecting(null);
+        setMode(null);
 
-        props.fClearCache();
+        fClearCache();
 
         return;
       }
 
-      console.log(props.sCachedPoints);
       const newCachedPoints = {
-        ...props.sCachedPoints,
+        ...cachedPoints,
         tools: {
-          ...props.sCachedPoints.tools,
+          ...cachedPoints.tools,
           area: [
-            ...props.sCachedPoints.tools.area,
+            ...cachedPoints.tools.area,
             {
-              x: sSnappedPoint ? sSnappedPoint.x : sMouseX,
-              y: sSnappedPoint ? sSnappedPoint.y : sMouseY,
-              snapped: sSnappedPoint ? true : false,
-              snappedPoint: sSnappedPoint
+              x: closestPoint.x,
+              y: closestPoint.y,
+              name: closestPoint.name,
+              snappedPoint: closestPoint
             }
           ]
         }
       };
 
-      props.fSetCachedPoints(newCachedPoints);
-      props.fSetSelecting(
-        'area-point-' + (props.sCachedPoints.tools.area.length + 1)
-      );
+      setCachedPoints(newCachedPoints);
+      setMode('area-point-' + (cachedPoints.tools.area.length + 1));
     }
 
     //* text tool
-    if (props.sSelecting === 'text') {
+    if (mode === 'text') {
       // save it
       const newSavedTexts = [
-        ...props.sSavedTexts,
+        ...savedTexts,
         {
-          x: sMouseX,
-          y: sMouseY,
-          text: 'text',
+          xTop: worldX,
+          yTop: worldY,
+          value: 'text',
           name: `text-${new Date().getTime()}`
         }
       ];
 
-      props.fSetSavedTexts(newSavedTexts);
+      setSavedTexts(newSavedTexts);
 
-      props.fSetSelecting(null);
+      setMode(null);
+      fClearCache();
     }
   }
 
   function handleAbort(evt) {
-    props.fSetSelecting(null);
+    setMode(null);
 
-    props.fClearCache();
+    fClearCache();
   }
 
   function changeSavedPointData(name, x, y) {
-    const newSavedPoints = props.sSavedPoints.map((point) => {
+    const newSavedPoints = savedPoints.map((point) => {
       if (point.name === name) {
         return {
           name,
@@ -312,7 +393,7 @@ export default function Canvas(props) {
       }
     });
 
-    const newSavedLines = props.sSavedLines.map((line) => {
+    const newSavedLines = savedLines.map((line) => {
       let newFirst = line.first;
       let newSecond = line.second;
 
@@ -338,23 +419,28 @@ export default function Canvas(props) {
       };
     });
 
-    props.fSetSavedPoints(newSavedPoints);
-    props.fSetSavedLines(newSavedLines);
+    console.log('Old saved points', savedPoints);
+    console.log('New saved points', newSavedPoints);
+
+    setSavedPoints(newSavedPoints);
+    setSavedLines(newSavedLines);
   }
 
   function changeSavedTextValue(textName, newValue) {
-    const newSavedTexts = props.sSavedTexts.map((text) => {
+    console.log('Old texts', savedTexts);
+    const newSavedTexts = savedTexts.map((text) => {
       if (text.name === textName) {
         return {
           ...text,
-          text: newValue
+          value: newValue
         };
       }
 
       return text;
     });
 
-    props.fSetSavedTexts(newSavedTexts);
+    console.log('New texts', newSavedTexts);
+    setSavedTexts(newSavedTexts);
   }
 
   return (
@@ -365,11 +451,11 @@ export default function Canvas(props) {
       onMouseLeave={handleAbort}
       ref={rMainCanvasDiv}
     >
-      <div className='absolute hidden z-50 w-full h-full'>
+      <div className='absolute z-50 hidden w-full h-full'>
         <canvas
-          width={props.sCanvasWidth}
-          height={props.sCanvasHeight}
-          ref={props.rExportCanvas}
+          width={params.width}
+          height={params.height}
+          ref={refExportCanvas}
           className=''
         ></canvas>
       </div>
@@ -377,7 +463,7 @@ export default function Canvas(props) {
       <div className='absolute z-10 w-full h-full'>
         {/* grid vertical lines*/}
         <div className='absolute flex flex-row justify-between w-full h-full p-0'>
-          {Array(props.sGridSize)
+          {Array(params.gridNumCellsPerRow)
             .fill(0)
             .map((_, index) => {
               return (
@@ -390,7 +476,7 @@ export default function Canvas(props) {
         </div>
         {/* grid horizontal lines*/}
         <div className='absolute flex flex-col justify-between w-full h-full p-0'>
-          {Array((props.sGridSize * 9) / 16)
+          {Array((params.gridNumCellsPerRow * 9) / 16)
             .fill(0)
             .map((_, index) => {
               return (
@@ -409,99 +495,108 @@ export default function Canvas(props) {
         {/* debug */}
         <div className='absolute mt-6'>
           {!sMouseX || !sMouseY ? null : (
-            <span>{`Current World Pos: X = ${
-              sMouseX + (props.sCanvasCenterWorldX - props.sCanvasWidth / 2)
-            }, Y = ${
-              -sMouseY + (props.sCanvasCenterWorldY + props.sCanvasHeight / 2)
-            }`}</span>
+            <span>{`Current World Pos: X = ${screenToWorld({
+              x: sMouseX,
+              y: sMouseY
+            }).x.toFixed(2)} ${params.gridUnit.name}, Y = ${screenToWorld({
+              x: sMouseX,
+              y: sMouseY
+            }).y.toFixed(2)} ${params.gridUnit.name}`}</span>
           )}
         </div>
         {/* debug 2 */}
         <div className='absolute flex justify-end w-full'>
-          <span>{`Currently Placing: ${props.sSelecting}`}</span>
+          <span>{`Currently Placing: ${mode}`}</span>
         </div>
       </div>
 
       {/* render saved points */}
       <div className='absolute z-20 w-full h-full'>
-        {props.sSavedPoints.map((point, index) => {
+        {savedPoints.map((point, index) => {
+          const screenPos = worldToScreen({
+            x: point.x,
+            y: point.y
+          });
+
           return (
             <div
               //  todo add name popup
               key={`saved-point-${index}`}
               className='absolute w-2 h-2 bg-red-600 rounded-full'
-              style={{ top: point.y - 1, left: point.x - 1 }}
+              style={{ top: screenPos.y - 1, left: screenPos.x - 1 }}
             />
           );
         })}
 
         {/* render line cached points */}
-        {props.sCachedPoints.tools.line.map((point, index) => {
+        {cachedPoints.tools.line.map((point, index) => {
+          const screenPos = worldToScreen({
+            x: point.x,
+            y: point.y
+          });
+
           return (
             <div
               key={`saved-point-${index}`}
               className='absolute w-1 h-1 bg-red-600 rounded-full'
-              style={{ top: point.y, left: point.x }}
+              style={{ top: screenPos.y, left: screenPos.x }}
             />
           );
         })}
 
         {/* render cached lines */}
-        {props.sCachedLines.map((line, index) => {
+        {cachedLines.map((line, index) => {
           return (
             <Line
               key={`cached-line-${index}`}
               first={line.first}
               second={line.second}
               fChangeSavedPointData={changeSavedPointData}
-              // grid units
-              sGridSize={props.sGridSize}
-              sGridDimension={props.sGridDimension}
-              sGridUnit={props.sGridUnit}
-              sCanvasWidth={props.sCanvasWidth}
+              canvasParams={params}
+              unitLengthToPixels={unitLengthToPixels}
+              pixelLengthToUnits={pixelLengthToUnits}
+              screenToWorld={screenToWorld}
+              worldToScreen={worldToScreen}
             />
           );
         })}
 
         {/* render area and cached points */}
-        {props.sCachedPoints.tools.area.map((point, index) => {
+        {cachedPoints.tools.area.map((point, index) => {
+          const screenPos = worldToScreen({
+            x: point.x,
+            y: point.y
+          });
+
           return (
             <div
               key={`area-cached-point-${index}`}
               className='absolute w-2 h-2 bg-green-600 rounded-full'
-              style={{ top: point.y - 1, left: point.x - 1 }}
+              style={{ top: screenPos.y - 1, left: screenPos.x - 1 }}
             />
           );
         })}
 
         <Area
-          points={props.sCachedPoints.tools.area}
-          savedLines={props.sSavedLines}
-          sCanvasWidth={props.sCanvasWidth}
-          sCanvasHeight={props.sCanvasHeight}
-          bg='red'
+          points={cachedPoints.tools.area.map((p) => p.snappedPoint)}
+          savedLines={savedLines}
+          canvasParams={params}
+          bgColor='red'
           textColor='#22c55e'
-          // grid units
-          sGridSize={props.sGridSize}
-          sGridDimension={props.sGridDimension}
-          sGridUnit={props.sGridUnit}
+          worldToScreen={worldToScreen}
         />
 
         {/* render saved areas */}
-        {props.sSavedAreas.map((area, index) => {
+        {savedAreas.map((area, index) => {
           return (
             <Area
               key={`saved-area-${index}`}
               points={area.points}
-              savedLines={props.sSavedLines}
-              sCanvasWidth={props.sCanvasWidth}
-              sCanvasHeight={props.sCanvasHeight}
-              bg='#4ade80'
+              savedLines={savedLines}
+              canvasParams={params}
+              bgColor='#4ade80'
               textColor='#22c55e'
-              // grid units
-              sGridSize={props.sGridSize}
-              sGridDimension={props.sGridDimension}
-              sGridUnit={props.sGridUnit}
+              worldToScreen={worldToScreen}
             />
           );
         })}
@@ -509,56 +604,63 @@ export default function Canvas(props) {
 
       <div className='absolute z-30 w-full h-full'>
         {/* render saved lines */}
-        {props.sSavedLines.map((line, index) => {
+        {savedLines.map((line, index) => {
           return (
             <Line
-              key={`cached-line-${index}`}
+              key={`saved-line-${index}`}
               first={line.first}
               second={line.second}
               fChangeSavedPointData={changeSavedPointData}
-              // grid units
-              sGridSize={props.sGridSize}
-              sGridDimension={props.sGridDimension}
-              sGridUnit={props.sGridUnit}
-              sCanvasWidth={props.sCanvasWidth}
+              canvasParams={params}
+              unitLengthToPixels={unitLengthToPixels}
+              pixelLengthToUnits={pixelLengthToUnits}
+              screenToWorld={screenToWorld}
+              worldToScreen={worldToScreen}
             />
           );
         })}
 
         {/* render saved texts */}
-        {props.sSavedTexts.map((text, index) => {
+        {savedTexts.map((text, index) => {
           return (
             <Text
               key={`saved-text-${index}`}
-              x={text.x}
-              y={text.y}
-              text={text.text}
+              x={text.xTop}
+              y={text.yTop}
+              value={text.value}
               saved={true}
               name={text.name}
               fChangeSavedTextValue={changeSavedTextValue}
+              worldToScreen={worldToScreen}
             />
           );
         })}
       </div>
 
       {/* render current icon */}
-      {props.sSelecting === null ? null : props.sSelecting ===
-          'line-first-point' || props.sSelecting === 'line-second-point' ? (
+      {mode === null ? null : mode === 'line-first-point' ||
+        mode === 'line-second-point' ? (
         <div
           className='absolute w-1 h-1 bg-red-500 rounded-full'
           style={{
-            top: (sSnappedPoint ? sSnappedPoint.y : sMouseY) ?? 0,
-            left: (sSnappedPoint ? sSnappedPoint.x : sMouseX) ?? 0
+            top: sMouseY ?? 0, // todo add snap here
+            left: sMouseX ?? 0
           }}
         />
-      ) : props.sSelecting === 'text' ? (
-        <Text x={sMouseX} y={sMouseY} />
-      ) : props.sSelecting === 'pan' ? (
+      ) : mode === 'text' ? (
+        <Text
+          x={screenToWorld({ x: sMouseX, y: sMouseY }).x}
+          y={screenToWorld({ x: sMouseX, y: sMouseY }).y}
+          saved={false}
+          value='text'
+          worldToScreen={worldToScreen}
+        />
+      ) : mode === 'pan' ? (
         <div
           className='absolute'
           style={{
-            top: (sSnappedPoint ? sSnappedPoint.y : sMouseY) ?? 0,
-            left: (sSnappedPoint ? sSnappedPoint.x : sMouseX) ?? 0
+            top: sMouseY ?? 0, // todo add snap here
+            left: sMouseX ?? 0
           }}
         >
           <svg
@@ -580,8 +682,8 @@ export default function Canvas(props) {
         <div
           className='absolute w-1 h-1 bg-green-500 rounded-full'
           style={{
-            top: (sSnappedPoint ? sSnappedPoint.y : sMouseY) ?? 0,
-            left: (sSnappedPoint ? sSnappedPoint.x : sMouseX) ?? 0
+            top: sMouseY ?? 0, // todo add snap here
+            left: sMouseX ?? 0
           }}
         />
       )}
