@@ -125,6 +125,10 @@ export default function Home() {
         clearCache();
 
         setSelectionMode('text');
+      } else if (evt.key === 'p') {
+        clearCache();
+
+        setSelectionMode('pan');
       }
     });
   }, []);

@@ -72,12 +72,14 @@ export default function Canvas({
   const [sMouseX, setMouseX] = useState<number>(null);
   const [sMouseY, setMouseY] = useState<number>(null);
 
-  const [sSnappedPoint, setSnappedPoint] = useState<custom.SavedPoint>(null); // snapping always goes to a snapped point
+  const [prevMouse, setPrevMouse] = useState<custom.PixelSpacePoint>(null);
+
+  const [sSnappedPoint, setSnappedPoint] = useState<custom.SavedPoint>(null); // snapping always goes to a saved point
 
   const rMainCanvasDiv = useRef<HTMLDivElement>(null);
 
   function isMouseButtonDown(evt, targetButton: custom.MouseButtonBits) {
-    return evt.buttons | targetButton;
+    return (evt.buttons & targetButton) !== 0;
   }
 
   // setting the canvas dimensions in the page
@@ -164,6 +166,11 @@ export default function Canvas({
       y: yScreenWithSnap
     });
 
+    setPrevMouse({
+      x: sMouseX,
+      y: sMouseY
+    });
+
     setMouseX(xScreenWithSnap);
     setMouseY(yScreenWithSnap);
 
@@ -195,7 +202,22 @@ export default function Canvas({
       mode === 'pan' &&
       isMouseButtonDown(evt, custom.MouseButtonBits.LEFT_CLICK)
     ) {
-      console.log('Dragging with leftclick down');
+      console.log(
+        `[Pan] LMB DOWN - moving from scr(${prevMouse.x}, ${
+          prevMouse.y
+        }) to wrld(${sMouseX}, ${sMouseY}) for a total delta of (${
+          sMouseX - prevMouse.x
+        }, ${sMouseY - prevMouse.y})`
+      );
+
+      const screenDeltaX = sMouseX - prevMouse.x;
+      const screenDeltaY = sMouseY - prevMouse.y;
+
+      const worldDeltaX = pixelLengthToUnits(screenDeltaX * -1); // negative this to give a realistic effect
+      const worldDeltaY = pixelLengthToUnits(screenDeltaY);
+
+      params.setWorldCenterX(params.worldCenterX + worldDeltaX);
+      params.setWorldCenterY(params.worldCenterY + worldDeltaY);
     }
   }
 
@@ -225,6 +247,11 @@ export default function Canvas({
     const { x: xScreenWithSnap, y: yScreenWithSnap } = worldToScreen({
       x: worldX,
       y: worldY
+    });
+
+    setPrevMouse({
+      x: sMouseX,
+      y: sMouseY
     });
 
     setMouseX(xScreenWithSnap);
@@ -489,11 +516,11 @@ export default function Canvas({
         </div>
         {/* debug */}
         <div className='absolute'>
-          <span>{`Current Pos: X = ${sMouseX}, Y = ${sMouseY}`}</span>
+          <span>{`Current Screen Pos: X = ${sMouseX}, Y = ${sMouseY}`}</span>
         </div>
 
         {/* debug */}
-        <div className='absolute mt-6'>
+        <div className='absolute mt-12'>
           {!sMouseX || !sMouseY ? null : (
             <span>{`Current World Pos: X = ${screenToWorld({
               x: sMouseX,
@@ -504,6 +531,12 @@ export default function Canvas({
             }).y.toFixed(2)} ${params.gridUnit.name}`}</span>
           )}
         </div>
+
+        {/* debug */}
+        <div className='absolute mt-6'>
+          <span>{`Prev Screen Pos: X = ${prevMouse?.x}, Y = ${prevMouse?.y}`}</span>
+        </div>
+
         {/* debug 2 */}
         <div className='absolute flex justify-end w-full'>
           <span>{`Currently Placing: ${mode}`}</span>
