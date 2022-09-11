@@ -9,6 +9,8 @@ import FooterToolbar from '../components/FooterToolbar';
 import { custom } from '../types/t';
 
 export default function Home() {
+  const [sSketchName, setSketchName] = useState('Unnamed');
+
   const [sGridSize, setGridSize] = useState(64);
   const [sCanvasWidth, setCanvasWidth] = useState(0);
   const [sCanvasHeight, setCanvasHeight] = useState(0);
@@ -44,6 +46,12 @@ export default function Home() {
   const [sCanvasCenterWorldY, setCanvasCenterWorldY] = useState(0);
 
   const rExportCanvas = useRef<HTMLCanvasElement>(null);
+
+  const refNameInput = useRef<HTMLInputElement>(null);
+
+  function handleNameChange(evt: React.ChangeEvent<HTMLInputElement>) {
+    setSketchName(evt.target.value);
+  }
 
   function clearCache() {
     setCachedPoints({
@@ -178,6 +186,11 @@ export default function Home() {
         setSavedTexts={setSavedTexts}
         // export canvas
         refExportCanvas={rExportCanvas}
+        // name input
+        setSketchName={setSketchName}
+        sketchName={sSketchName}
+        refNameInput={refNameInput}
+        fHandleNameChange={handleNameChange}
       />
 
       <Canvas
@@ -241,11 +254,46 @@ export default function Home() {
       />
 
       <FooterToolbar
-        // grid dimensions
-        sGridDimension={sGridDimension}
-        setGridDimension={setGridDimension}
-        sGridUnit={sGridUnit}
-        setGridUnit={setGridUnit}
+        // selection mode
+        setSelectionMode={setSelectionMode}
+        // canvas params
+        canvasParams={{
+          width: sCanvasWidth,
+          height: sCanvasHeight,
+          setWidth: setCanvasWidth,
+          setHeight: setCanvasHeight,
+
+          screenTopLeftX: sCanvasTopLeftScreenX,
+          screenTopLeftY: sCanvasTopLeftScreenY,
+          setScreenTopLeftX: setCanvasTopLeftScreenX,
+          setScreenTopLeftY: setCanvasTopLeftScreenY,
+
+          worldCenterX: sCanvasCenterWorldX,
+          worldCenterY: sCanvasCenterWorldY,
+          setWorldCenterX: setCanvasCenterWorldX,
+          setWorldCenterY: setCanvasCenterWorldY,
+
+          gridUnit: sGridUnit,
+          gridNumCellsPerRow: sGridSize,
+          worldUnitsPerCell: sGridDimension,
+          setGridUnit: setGridUnit,
+          setGridNumCellsPerRow: setGridSize,
+          setWorldUnitsPerCell: setGridDimension
+        }}
+        // unit functions
+        unitLengthToPixels={unitLengthToPixels}
+        pixelLengthToUnits={pixelLengthToUnits}
+        worldToScreen={worldToScreen}
+        screenToWorld={screenToWorld}
+        // saved stuff for export
+        savedPoints={sSavedPoints}
+        setSavedPoints={setSavedPoints}
+        savedLines={sSavedLines}
+        setSavedLines={setSavedLines}
+        savedAreas={sSavedAreas}
+        setSavedAreas={setSavedAreas}
+        savedTexts={sSavedTexts}
+        setSavedTexts={setSavedTexts}
       />
     </div>
   );

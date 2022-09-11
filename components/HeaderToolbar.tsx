@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 import Dropdown from './Dropdown';
 import Button from './Button';
 import FileInput from './FileInput';
+import TextInput from './TextInput';
 
 import { calcArea } from './Area';
 
@@ -33,32 +34,24 @@ type ComponentProps = {
   setSavedTexts: (value: custom.Text[]) => void;
 
   refExportCanvas: React.MutableRefObject<HTMLCanvasElement>;
+
+  refNameInput: React.MutableRefObject<HTMLInputElement>;
+
+  sketchName: string;
+  setSketchName: (value: string) => void;
+  fHandleNameChange: React.ChangeEventHandler<HTMLInputElement>;
 };
 
 export default function HeaderToolbar(props: ComponentProps) {
-  function handleLineToolClick() {
-    console.log('Line tool clicked');
+  useEffect(() => {
+    const nameInput = props.refNameInput.current;
 
-    props.setSelectionMode('line-first-point');
-  }
+    if (!nameInput) {
+      return;
+    }
 
-  function handleAreaToolClick() {
-    console.log('Area tool clicked');
-
-    props.setSelectionMode('area-point-1');
-  }
-
-  function handlePanToolClick() {
-    console.log('Pan tool clicked');
-
-    props.setSelectionMode('pan');
-  }
-
-  function handleTextToolClick() {
-    console.log('Text tool clicked');
-
-    props.setSelectionMode('text');
-  }
+    nameInput.value = props.sketchName;
+  }, [props.refNameInput, props.sketchName]);
 
   function exportToPNG() {
     console.log('Points', props.savedPoints);
@@ -185,7 +178,7 @@ export default function HeaderToolbar(props: ComponentProps) {
 
     const tmpLink = document.createElement('a');
     tmpLink.href = dataURL;
-    tmpLink.download = 'sketch.png';
+    tmpLink.download = `${props.sketchName}.png`;
 
     tmpLink.click();
   }
@@ -197,7 +190,7 @@ export default function HeaderToolbar(props: ComponentProps) {
     console.log('Texts', props.savedTexts);
 
     const content = {
-      sketchName: 'unnamed', // todo this
+      sketchName: props.sketchName,
       canvasParams: props.canvasParams,
       user: null, // todo once the backend is configured
       sketch: {
@@ -214,7 +207,7 @@ export default function HeaderToolbar(props: ComponentProps) {
 
     const tmpLink = document.createElement('a');
     tmpLink.setAttribute('href', contentString);
-    tmpLink.setAttribute('download', 'sketch.json'); //todo use sketch name
+    tmpLink.setAttribute('download', `${props.sketchName}.json`);
     tmpLink.click();
   }
 
@@ -233,6 +226,22 @@ export default function HeaderToolbar(props: ComponentProps) {
       props.setSavedLines(sketchContent.sketch.lines);
       props.setSavedAreas(sketchContent.sketch.areas);
       props.setSavedTexts(sketchContent.sketch.texts);
+
+      props.setSketchName(sketchContent.sketchName);
+
+      props.canvasParams.setGridNumCellsPerRow(
+        sketchContent.canvasParams.gridNumCellsPerRow
+      );
+      props.canvasParams.setGridUnit(sketchContent.canvasParams.gridUnit);
+      props.canvasParams.setWorldCenterX(
+        sketchContent.canvasParams.worldCenterX
+      );
+      props.canvasParams.setWorldCenterY(
+        sketchContent.canvasParams.worldCenterY
+      );
+      props.canvasParams.setWorldUnitsPerCell(
+        sketchContent.canvasParams.worldUnitsPerCell
+      );
     };
   }
 
@@ -245,12 +254,10 @@ export default function HeaderToolbar(props: ComponentProps) {
 
       {/* middle buttons */}
       <div>
-        <div className='flex flex-row items-center justify-center gap-2'>
-          <Button text='/' fClick={handleLineToolClick} />
-          <Button text='A' fClick={handleAreaToolClick} />
-          <Button text='P' fClick={handlePanToolClick} />
-          <Button text='T' fClick={handleTextToolClick} />
-        </div>
+        <TextInput
+          refInput={props.refNameInput}
+          fChange={props.fHandleNameChange}
+        />
       </div>
 
       {/* right */}

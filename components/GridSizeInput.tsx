@@ -1,40 +1,42 @@
 import { useEffect, useRef } from 'react';
+import { custom } from '../types/t';
 
-export default function GridSizeInput(props) {
+type ComponentProps = {
+  canvasParams: custom.CanvasParams;
+};
+
+export default function GridSizeInput({ canvasParams }: ComponentProps) {
   const rDimensionInput = useRef(null);
   const rUnitSelect = useRef(null);
 
   useEffect(() => {
     const dimensionInput = rDimensionInput.current;
-    if (dimensionInput && props.sGridDimension) {
-      dimensionInput.value = props.sGridDimension;
+    if (dimensionInput && canvasParams.worldUnitsPerCell) {
+      dimensionInput.value = canvasParams.worldUnitsPerCell;
     }
 
     const unitSelect = rUnitSelect.current;
-    if (unitSelect && (props.sGridUnit === 'm' || props.sGridUnit === 'ft')) {
-      unitSelect.value = props.sGridUnit;
+    if (unitSelect) {
+      unitSelect.value = canvasParams.gridUnit.name;
     }
-  }, [props.sGridDimension, props.sGridUnit]);
+  }, [canvasParams]);
 
   useEffect(() => {
     const dimensionInput = rDimensionInput.current;
     if (
       dimensionInput &&
-      props.sGridUnit !== 'px' &&
       (dimensionInput.value === '' || dimensionInput.value === 0)
     ) {
       dimensionInput.value = 1;
-      props.setGridDimension(1);
+      canvasParams.setWorldUnitsPerCell(1);
     }
-  });
+  }, [canvasParams]);
 
   function handleDimensionInputChange(evt) {
     const dimensionInput = rDimensionInput.current;
     if (dimensionInput) {
-      props.setGridDimension(dimensionInput.value);
+      canvasParams.setWorldUnitsPerCell(dimensionInput.value);
     }
-
-    console.log('handleDimensionInputChange', dimensionInput.value);
   }
 
   function handleUnitSelectChange(evt) {
@@ -42,7 +44,7 @@ export default function GridSizeInput(props) {
     if (unitSelect) {
       const longName = unitSelect.value === 'ft' ? 'Feet' : 'Meters';
 
-      props.setGridUnit({
+      canvasParams.setGridUnit({
         name: unitSelect.value,
         longName
       });
@@ -52,7 +54,7 @@ export default function GridSizeInput(props) {
   }
 
   return (
-    <div className='flex items-center justify-start w-1/4 mb-10'>
+    <div className='flex items-center justify-start w-1/4'>
       <select
         className='w-2/5 p-2 mr-2 bg-white border border-gray-400 rounded-lg outline-none '
         ref={rUnitSelect}
@@ -68,7 +70,7 @@ export default function GridSizeInput(props) {
         ref={rDimensionInput}
         onChange={handleDimensionInputChange}
       />
-      <span className='w-1/5'>{`${props.sGridUnit.name} / cell`}</span>
+      <span className='w-1/5'>{`${canvasParams.gridUnit.name} / cell`}</span>
     </div>
   );
 }
