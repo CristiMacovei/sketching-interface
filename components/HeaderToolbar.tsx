@@ -2,6 +2,7 @@ import React from 'react';
 
 import Dropdown from './Dropdown';
 import Button from './Button';
+import FileInput from './FileInput';
 
 import { calcArea } from './Area';
 
@@ -9,6 +10,8 @@ import { custom } from '../types/t';
 
 type ComponentProps = {
   setSelectionMode: (value: custom.SelectionMode) => void;
+
+  // canvas params
   canvasParams: custom.CanvasParams;
 
   // unit functions
@@ -18,9 +21,17 @@ type ComponentProps = {
   worldToScreen: (world: custom.WorldSpacePoint) => custom.PixelSpacePoint;
 
   savedPoints: custom.SavedPoint[];
+  setSavedPoints: (value: custom.SavedPoint[]) => void;
+
   savedLines: custom.SavedLine[];
+  setSavedLines: (value: custom.SavedLine[]) => void;
+
   savedAreas: custom.Area[];
+  setSavedAreas: (value: custom.Area[]) => void;
+
   savedTexts: custom.Text[];
+  setSavedTexts: (value: custom.Text[]) => void;
+
   refExportCanvas: React.MutableRefObject<HTMLCanvasElement>;
 };
 
@@ -50,13 +61,6 @@ export default function HeaderToolbar(props: ComponentProps) {
   }
 
   function exportToPNG() {
-    console.log(
-      props.savedPoints,
-      props.savedLines,
-      props.savedAreas,
-      props.savedTexts
-    );
-
     console.log('Points', props.savedPoints);
     console.log('Lines', props.savedLines);
     console.log('Areas', props.savedAreas);
@@ -186,18 +190,57 @@ export default function HeaderToolbar(props: ComponentProps) {
     tmpLink.click();
   }
 
+  function exportToJSON() {
+    console.log('Points', props.savedPoints);
+    console.log('Lines', props.savedLines);
+    console.log('Areas', props.savedAreas);
+    console.log('Texts', props.savedTexts);
+
+    const content = {
+      sketchName: 'unnamed', // todo this
+      canvasParams: props.canvasParams,
+      user: null, // todo once the backend is configured
+      sketch: {
+        points: props.savedPoints,
+        lines: props.savedLines,
+        areas: props.savedAreas,
+        texts: props.savedTexts
+      }
+    };
+
+    const contentString =
+      'data:text/json;charset=utf-8,' +
+      encodeURIComponent(JSON.stringify(content));
+
+    const tmpLink = document.createElement('a');
+    tmpLink.setAttribute('href', contentString);
+    tmpLink.setAttribute('download', 'sketch.json'); //todo use sketch name
+    tmpLink.click();
+  }
+
+  function handleJSONImport(evt: any) {
+    const targetFile = evt.target.files[0];
+
+    const fileReader = new FileReader();
+    fileReader.readAsText(targetFile, 'utf-8');
+
+    fileReader.onload = (evt) => {
+      const sketchContent = JSON.parse(evt.target.result as string);
+
+      console.log('Read file: ', sketchContent);
+
+      props.setSavedPoints(sketchContent.sketch.points);
+      props.setSavedLines(sketchContent.sketch.lines);
+      props.setSavedAreas(sketchContent.sketch.areas);
+      props.setSavedTexts(sketchContent.sketch.texts);
+    };
+  }
+
   return (
     <div className='relative flex items-center justify-between w-4/5 mx-auto'>
       {/* left  */}
       <div>
-        <Dropdown text='Export Sketch'>
-          <Button
-            text='Export to PNG'
-            className='w-full text-left bg-transparent'
-            textAlign='left'
-            fClick={exportToPNG}
-          />
-        </Dropdown>
+        <FileInput fEvent={handleJSONImport} />
       </div>
 
       {/* middle buttons */}
@@ -206,12 +249,26 @@ export default function HeaderToolbar(props: ComponentProps) {
           <Button text='/' fClick={handleLineToolClick} />
           <Button text='A' fClick={handleAreaToolClick} />
           <Button text='P' fClick={handlePanToolClick} />
+          <Button text='T' fClick={handleTextToolClick} />
         </div>
       </div>
 
       {/* right */}
       <div>
-        <Button text='Text' fClick={handleTextToolClick} />
+        <Dropdown text='Export Sketch'>
+          <Button
+            text='Export to PNG'
+            className='w-full text-left bg-transparent'
+            textAlign='left'
+            fClick={exportToPNG}
+          />
+          <Button
+            text='Export to JSON'
+            className='w-full text-left bg-transparent'
+            textAlign='left'
+            fClick={exportToJSON}
+          />
+        </Dropdown>
       </div>
     </div>
   );

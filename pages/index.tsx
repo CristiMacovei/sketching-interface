@@ -169,9 +169,13 @@ export default function Home() {
         screenToWorld={screenToWorld}
         // saved stuff for export
         savedPoints={sSavedPoints}
+        setSavedPoints={setSavedPoints}
         savedLines={sSavedLines}
+        setSavedLines={setSavedLines}
         savedAreas={sSavedAreas}
+        setSavedAreas={setSavedAreas}
         savedTexts={sSavedTexts}
+        setSavedTexts={setSavedTexts}
         // export canvas
         refExportCanvas={rExportCanvas}
       />

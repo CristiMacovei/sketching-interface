@@ -401,6 +401,16 @@ export default function Canvas({
     }
   }
 
+  function handleWheelZoom(evt) {
+    const zoomAmount = evt.deltaY / 2.5e3;
+
+    console.log(`[Zoom - info] Delta = ${zoomAmount}`);
+
+    const newZoom = params.worldUnitsPerCell + zoomAmount;
+
+    params.setWorldUnitsPerCell(Math.round(newZoom * 100) / 100);
+  }
+
   function handleAbort(evt) {
     setMode(null);
 
@@ -476,6 +486,7 @@ export default function Canvas({
       onMouseMove={handleMouseMove}
       onMouseDown={handleMouseClick}
       onMouseLeave={handleAbort}
+      onWheel={handleWheelZoom}
       ref={rMainCanvasDiv}
     >
       <div className='absolute z-50 hidden w-full h-full'>
