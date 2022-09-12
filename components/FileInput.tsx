@@ -18,8 +18,12 @@ export default function FileInput({ fEvent }: ComponentProps) {
   }
 
   return (
-    <div>
-      <Button fClick={triggerUpload} text='Import Sketch' />
+    <>
+      <Button
+        fClick={triggerUpload}
+        text='Load Local Sketch'
+        textAlign='left'
+      />
 
       <input
         type='file'
@@ -28,6 +32,6 @@ export default function FileInput({ fEvent }: ComponentProps) {
         className='hidden'
         ref={refFileInput}
       />
-    </div>
+    </>
   );
 }

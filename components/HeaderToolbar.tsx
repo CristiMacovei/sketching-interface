@@ -8,6 +8,8 @@ import TextInput from './TextInput';
 import { calcArea } from './Area';
 
 import { custom } from '../types/t';
+import { userAgent } from 'next/server';
+import axios from 'axios';
 
 type ComponentProps = {
   setSelectionMode: (value: custom.SelectionMode) => void;
@@ -40,6 +42,12 @@ type ComponentProps = {
   sketchName: string;
   setSketchName: (value: string) => void;
   fHandleNameChange: React.ChangeEventHandler<HTMLInputElement>;
+
+  sketchId: number;
+  setSketchId: (value: number) => void;
+
+  user: any; //todo
+  token: string;
 };
 
 export default function HeaderToolbar(props: ComponentProps) {
@@ -52,6 +60,20 @@ export default function HeaderToolbar(props: ComponentProps) {
 
     nameInput.value = props.sketchName;
   }, [props.refNameInput, props.sketchName]);
+
+  function contentAsJSON() {
+    return {
+      sketchName: props.sketchName,
+      canvasParams: props.canvasParams,
+      user: null, // todo once the backend is configured
+      sketch: {
+        points: props.savedPoints,
+        lines: props.savedLines,
+        areas: props.savedAreas,
+        texts: props.savedTexts
+      }
+    };
+  }
 
   function exportToPNG() {
     console.log('Points', props.savedPoints);
@@ -189,17 +211,7 @@ export default function HeaderToolbar(props: ComponentProps) {
     console.log('Areas', props.savedAreas);
     console.log('Texts', props.savedTexts);
 
-    const content = {
-      sketchName: props.sketchName,
-      canvasParams: props.canvasParams,
-      user: null, // todo once the backend is configured
-      sketch: {
-        points: props.savedPoints,
-        lines: props.savedLines,
-        areas: props.savedAreas,
-        texts: props.savedTexts
-      }
-    };
+    const content = contentAsJSON();
 
     const contentString =
       'data:text/json;charset=utf-8,' +
@@ -222,34 +234,69 @@ export default function HeaderToolbar(props: ComponentProps) {
 
       console.log('Read file: ', sketchContent);
 
-      props.setSavedPoints(sketchContent.sketch.points);
-      props.setSavedLines(sketchContent.sketch.lines);
-      props.setSavedAreas(sketchContent.sketch.areas);
-      props.setSavedTexts(sketchContent.sketch.texts);
-
-      props.setSketchName(sketchContent.sketchName);
-
-      props.canvasParams.setGridNumCellsPerRow(
-        sketchContent.canvasParams.gridNumCellsPerRow
-      );
-      props.canvasParams.setGridUnit(sketchContent.canvasParams.gridUnit);
-      props.canvasParams.setWorldCenterX(
-        sketchContent.canvasParams.worldCenterX
-      );
-      props.canvasParams.setWorldCenterY(
-        sketchContent.canvasParams.worldCenterY
-      );
-      props.canvasParams.setWorldUnitsPerCell(
-        sketchContent.canvasParams.worldUnitsPerCell
-      );
+      importSketchContent(sketchContent);
     };
+  }
+
+  function importSketchContent(sketchContent: any) {
+    props.setSavedPoints(sketchContent.sketch.points);
+    props.setSavedLines(sketchContent.sketch.lines);
+    props.setSavedAreas(sketchContent.sketch.areas);
+    props.setSavedTexts(sketchContent.sketch.texts);
+
+    props.setSketchName(sketchContent.sketchName);
+
+    props.canvasParams.setGridNumCellsPerRow(
+      sketchContent.canvasParams.gridNumCellsPerRow
+    );
+    props.canvasParams.setGridUnit(sketchContent.canvasParams.gridUnit);
+    props.canvasParams.setWorldCenterX(sketchContent.canvasParams.worldCenterX);
+    props.canvasParams.setWorldCenterY(sketchContent.canvasParams.worldCenterY);
+    props.canvasParams.setWorldUnitsPerCell(
+      sketchContent.canvasParams.worldUnitsPerCell
+    );
+  }
+
+  async function uploadSketch() {
+    const res = await axios.post(
+      `${process.env.NEXT_PUBLIC_API_URL}/sketches/create`,
+      {
+        token: props.token,
+        data: {
+          json: JSON.stringify(contentAsJSON())
+        }
+      }
+    );
+
+    console.log(res);
   }
 
   return (
     <div className='relative flex items-center justify-between w-4/5 mx-auto'>
       {/* left  */}
       <div>
-        <FileInput fEvent={handleJSONImport} />
+        <Dropdown text='Import Sketch'>
+          {props.user.sketches.map((sk, index) => {
+            const sketchContent = JSON.parse(sk.json);
+
+            return (
+              <Button
+                key={`dl-sketch-${index}`}
+                text={`${sketchContent.sketchName} (${sk.id})`}
+                className='w-full text-left bg-transparent'
+                textAlign='left'
+                fClick={() => {
+                  importSketchContent(sketchContent);
+
+                  if (sk.id) {
+                    props.setSketchId(sk.id);
+                  }
+                }}
+              />
+            );
+          })}
+          <FileInput fEvent={handleJSONImport} />
+        </Dropdown>
       </div>
 
       {/* middle buttons */}
@@ -263,6 +310,12 @@ export default function HeaderToolbar(props: ComponentProps) {
       {/* right */}
       <div>
         <Dropdown text='Export Sketch'>
+          <Button
+            text='Upload Sketch'
+            fClick={uploadSketch}
+            className='w-full text-left bg-transparent'
+            textAlign='left'
+          />
           <Button
             text='Export to PNG'
             className='w-full text-left bg-transparent'

@@ -86,4 +86,8 @@ export namespace custom {
     RIGHT_CLICK = 0b10,
     SCROLL_CLICK = 0b100
   }
+
+  export type Sketch = {}; // todo
+
+  export type User = {}; // todo
 }

@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
+import axios from 'axios';
+import { getCookie, setCookie } from 'cookies-next';
 
 import HeaderToolbar from '../components/HeaderToolbar';
 
@@ -9,6 +11,10 @@ import FooterToolbar from '../components/FooterToolbar';
 import { custom } from '../types/t';
 
 export default function Home() {
+  const [sUser, setUser] = useState(null);
+  const [sToken, setToken] = useState(null);
+  const [sSkecthId, setSketchId] = useState(null);
+
   const [sSketchName, setSketchName] = useState('Unnamed');
 
   const [sGridSize, setGridSize] = useState(64);
@@ -115,6 +121,29 @@ export default function Home() {
     };
   }
 
+  // redirect to /login if there's no token
+  useEffect(() => {
+    (async () => {
+      const tokenCookie = getCookie('token');
+
+      if (tokenCookie === null || typeof tokenCookie === 'undefined') {
+        window.location.href = '/login';
+      }
+
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth`, {
+        token: tokenCookie
+      });
+
+      if (res.data.status === 'success') {
+        setUser(res.data.user);
+        setToken(tokenCookie);
+      } else {
+        window.location.href = '/login';
+      }
+    })();
+  }, []);
+
+  // keyboard shortcuts
   useEffect(() => {
     window.addEventListener('keydown', (evt) => {
       if (evt.key === 'Escape') {
@@ -141,9 +170,12 @@ export default function Home() {
     });
   }, []);
 
-  return (
+  return sUser ? (
     <div className='flex flex-col w-screen h-screen pt-4'>
       <HeaderToolbar
+        // user data
+        user={sUser}
+        token={sToken}
         // selection mode
         setSelectionMode={setSelectionMode}
         // canvas params
@@ -191,6 +223,9 @@ export default function Home() {
         sketchName={sSketchName}
         refNameInput={refNameInput}
         fHandleNameChange={handleNameChange}
+        // sketch id
+        sketchId={sSkecthId}
+        setSketchId={setSketchId}
       />
 
       <Canvas
@@ -296,5 +331,5 @@ export default function Home() {
         setSavedTexts={setSavedTexts}
       />
     </div>
-  );
+  ) : null;
 }
