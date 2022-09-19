@@ -101,6 +101,110 @@ export default function Canvas({
     params.setHeight(Math.round(boundingRect.height));
   }, [params]);
 
+  // find the closed shapes
+  useEffect(() => {
+    console.log('[AUTO-AREA] Detecting shapes...');
+    console.log(savedPoints, savedLines);
+
+    let graph: number[][] = [];
+    const cycles: number[][] = [];
+    const vertexColor: number[] = new Array(1 + savedPoints.length).fill(0);
+    const vertexParentIndex: number[] = new Array(1 + savedPoints.length).fill(
+      0
+    );
+
+    function buildGraph() {
+      graph = [];
+      for (let i = 0; i <= savedPoints.length; ++i) {
+        graph.push([]);
+      }
+      console.log('Initial State', graph);
+
+      const pointNameMap: Map<string, number> = new Map();
+
+      savedPoints.forEach(({ name }, index) => {
+        pointNameMap.set(name, 1 + index);
+      });
+
+      savedLines.forEach((line) => {
+        const first = pointNameMap.get(line.first.name);
+        const second = pointNameMap.get(line.second.name);
+
+        graph[first].push(second);
+        graph[second].push(first);
+      });
+    }
+
+    function dfs(vertex: number, vertexParent: number) {
+      if (vertex >= graph.length) {
+        return;
+      }
+
+      if (vertexColor[vertex] === 2) {
+        return;
+      }
+
+      if (vertexColor[vertex] === 1) {
+        let cycle: number[] = [];
+
+        let current = vertexParent;
+        cycle.push(current);
+
+        while (current !== vertex) {
+          current = vertexParentIndex[current];
+          cycle.push(current);
+        }
+
+        cycles.push(cycle);
+        return;
+      }
+
+      vertexParentIndex[vertex] = vertexParent;
+      vertexColor[vertex] = 1;
+
+      for (let nb of graph[vertex]) {
+        if (nb === vertexParentIndex[vertex]) {
+          continue;
+        }
+
+        dfs(nb, vertex);
+      }
+
+      vertexColor[vertex] = 2;
+    }
+
+    buildGraph();
+    console.log('Graph:', graph);
+
+    dfs(1, 0);
+    console.log('Cycles: ', cycles);
+
+    if (cycles) {
+      const newSavedAreas = savedAreas;
+      const areaIdentityStrings = savedAreas.map(({ points }) =>
+        points.map(({ name }) => name).join('')
+      );
+
+      let newAreas = 0;
+      cycles.forEach((cycle) => {
+        const identityString = cycle
+          .map((pointIndex) => savedPoints[pointIndex - 1].name)
+          .join('');
+
+        if (areaIdentityStrings.indexOf(identityString) === -1) {
+          newSavedAreas.push({
+            points: cycle.map((pointIndex) => savedPoints[pointIndex - 1])
+          });
+          ++newAreas;
+        }
+      });
+
+      if (newAreas > 0) {
+        setSavedAreas(newSavedAreas);
+      }
+    }
+  }, [savedPoints, savedLines, savedAreas, setSavedAreas]);
+
   function snapToPoint(
     x: number,
     y: number,

@@ -18,6 +18,8 @@ export default function LoginPage() {
       userData
     );
 
+    console.log(res);
+
     if (res.data.status === 'success') {
       setCookie('token', res.data.token);
 
