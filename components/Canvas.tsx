@@ -39,6 +39,9 @@ type Props = {
   savedTexts: custom.Text[];
   setSavedTexts: (value: custom.Text[]) => void;
 
+  selectedPoints: custom.SavedPoint[];
+  setSelectedPoints: (value: custom.SavedPoint[]) => void;
+
   fClearCache: () => void;
 
   refExportCanvas: React.MutableRefObject<HTMLCanvasElement>;
@@ -66,6 +69,8 @@ export default function Canvas({
   setSavedAreas,
   savedTexts,
   setSavedTexts,
+  selectedPoints,
+  setSelectedPoints,
   fClearCache,
   refExportCanvas
 }: Props) {
@@ -73,6 +78,8 @@ export default function Canvas({
   const [sMouseY, setMouseY] = useState<number>(null);
 
   const [prevMouse, setPrevMouse] = useState<custom.PixelSpacePoint>(null);
+  const [noSnapPrevMouse, setNoSnapPrevMouse] =
+    useState<custom.PixelSpacePoint>(null);
 
   const [sSnappedPoint, setSnappedPoint] = useState<custom.SavedPoint>(null); // snapping always goes to a saved point
 
@@ -275,6 +282,11 @@ export default function Canvas({
       y: sMouseY
     });
 
+    setNoSnapPrevMouse({
+      x: instantScreenX,
+      y: instantScreenY
+    });
+
     setMouseX(xScreenWithSnap);
     setMouseY(yScreenWithSnap);
 
@@ -302,6 +314,7 @@ export default function Canvas({
       setCachedLines(newCachedLines);
     }
 
+    // catch dragging if we're in 'pan' mode
     if (
       mode === 'pan' &&
       isMouseButtonDown(evt, custom.MouseButtonBits.LEFT_CLICK)
@@ -322,6 +335,23 @@ export default function Canvas({
 
       params.setWorldCenterX(params.worldCenterX + worldDeltaX);
       params.setWorldCenterY(params.worldCenterY + worldDeltaY);
+    }
+    // catch dragging if we're in 'select' mode
+    else if (
+      mode === 'select' &&
+      isMouseButtonDown(evt, custom.MouseButtonBits.LEFT_CLICK) &&
+      evt.ctrlKey
+    ) {
+      const screenDeltaX = instantScreenX - noSnapPrevMouse.x;
+      const screenDeltaY = instantScreenY - noSnapPrevMouse.y;
+
+      const worldDeltaX = pixelLengthToUnits(screenDeltaX);
+      const worldDeltaY = pixelLengthToUnits(screenDeltaY * -1); // negative this to give a realistic effect
+
+      selectedPoints.forEach((point) => {
+        point.x += worldDeltaX;
+        point.y += worldDeltaY;
+      });
     }
   }
 
@@ -503,6 +533,35 @@ export default function Canvas({
       setMode(null);
       fClearCache();
     }
+
+    //* select current point if in 'select' mode and control pressed
+    if (mode === 'select' && !evt.ctrlKey) {
+      const newSelectedPoints = [...selectedPoints];
+
+      if (closestPoint) {
+        if (!newSelectedPoints.find((p) => p.name === closestPoint.name)) {
+          newSelectedPoints.push(closestPoint);
+        }
+      }
+
+      setSelectedPoints(newSelectedPoints);
+    }
+  }
+
+  function handleMouseRelease(evt) {
+    if (mode === null) {
+      return;
+    }
+
+    // if we're in 'select' mode, move all selected points & clear the list
+    if (mode === 'select' && evt.ctrlKey) {
+      selectedPoints.forEach(({ name, x, y }) => {
+        console.log('moving', name, x, y);
+        changeSavedPointData(name, x, y);
+      });
+
+      setSelectedPoints([]);
+    }
   }
 
   function handleWheelZoom(evt) {
@@ -560,11 +619,30 @@ export default function Canvas({
       };
     });
 
+    const newSavedAreas = savedAreas.map((area) => {
+      const newPoints = area.points.map((point) => {
+        if (point.name === name) {
+          return {
+            name,
+            x,
+            y
+          };
+        } else {
+          return point;
+        }
+      });
+
+      return {
+        points: newPoints
+      };
+    });
+
     console.log('Old saved points', savedPoints);
     console.log('New saved points', newSavedPoints);
 
     setSavedPoints(newSavedPoints);
     setSavedLines(newSavedLines);
+    setSavedAreas(newSavedAreas);
   }
 
   function changeSavedTextValue(textName, newValue) {
@@ -589,6 +667,7 @@ export default function Canvas({
       className='relative mx-auto mt-6 bg-white border border-gray-700 aspect-video grow'
       onMouseMove={handleMouseMove}
       onMouseDown={handleMouseClick}
+      onMouseUp={handleMouseRelease}
       onMouseLeave={handleAbort}
       onWheel={handleWheelZoom}
       ref={rMainCanvasDiv}
@@ -780,6 +859,27 @@ export default function Canvas({
               name={text.name}
               fChangeSavedTextValue={changeSavedTextValue}
               worldToScreen={worldToScreen}
+            />
+          );
+        })}
+      </div>
+
+      {/* render selected points */}
+      <div className='absolute z-20 w-full h-full'>
+        {selectedPoints.map((point, index) => {
+          const screenPos = worldToScreen({
+            x: point.x,
+            y: point.y
+          });
+
+          return (
+            <div
+              key={`selected-point-${index}`}
+              className='absolute w-2 h-2 bg-purple-600 rounded-full'
+              style={{
+                top: screenPos.y - 1,
+                left: screenPos.x - 1
+              }}
             />
           );
         })}

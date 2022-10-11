@@ -8,7 +8,6 @@ import TextInput from './TextInput';
 import { calcArea } from './Area';
 
 import { custom } from '../types/t';
-import { userAgent } from 'next/server';
 import axios from 'axios';
 
 type ComponentProps = {

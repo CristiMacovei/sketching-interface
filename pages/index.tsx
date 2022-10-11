@@ -25,6 +25,10 @@ export default function Home() {
   const [sSelectionMode, setSelectionMode] =
     useState<custom.SelectionMode>(null);
 
+  const [sSelectedPoints, setSelectedPoints] = useState<custom.SavedPoint[]>(
+    []
+  ); //todo make it able to move more than points
+
   const [sCachedPoints, setCachedPoints] = useState<custom.CachedPointStorage>({
     tools: {
       line: [],
@@ -69,6 +73,7 @@ export default function Home() {
     });
     setCachedLines([]);
     setCachedText(null);
+    setSelectedPoints([]);
   }
 
   function unitLengthToPixels(unitLength: number): number {
@@ -139,7 +144,7 @@ export default function Home() {
         setUser(res.data.user);
         setToken(tokenCookie);
       } else {
-        window.location.href = '/login';
+        window.location.href = '/auth';
       }
     })();
   }, []);
@@ -167,6 +172,10 @@ export default function Home() {
         clearCache();
 
         setSelectionMode('pan');
+      } else if (evt.key === 's') {
+        clearCache();
+
+        setSelectionMode('select');
       }
     });
   }, []);
@@ -283,6 +292,9 @@ export default function Home() {
         // saved texts & setter
         savedTexts={sSavedTexts}
         setSavedTexts={setSavedTexts}
+        // selected points & setter
+        selectedPoints={sSelectedPoints}
+        setSelectedPoints={setSelectedPoints}
         // clear cache
         fClearCache={clearCache}
         // export canvas
