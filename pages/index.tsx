@@ -9,6 +9,7 @@ import Canvas from '../components/Canvas';
 import FooterToolbar from '../components/FooterToolbar';
 
 import { custom } from '../types/t';
+import VFContainer from '../components/VFContainer';
 
 export default function Home() {
   const [sUser, setUser] = useState(null);
@@ -121,13 +122,13 @@ export default function Home() {
     };
   }
 
-  // redirect to /login if there's no token
+  // redirect to auth if there's no token
   useEffect(() => {
     (async () => {
       const tokenCookie = getCookie('token');
 
       if (tokenCookie === null || typeof tokenCookie === 'undefined') {
-        window.location.href = '/login';
+        window.location.href = '/auth';
       }
 
       const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth`, {
@@ -171,7 +172,7 @@ export default function Home() {
   }, []);
 
   return sUser ? (
-    <div className='flex flex-col w-screen h-screen pt-4'>
+    <VFContainer>
       <HeaderToolbar
         // user data
         user={sUser}
@@ -330,6 +331,6 @@ export default function Home() {
         savedTexts={sSavedTexts}
         setSavedTexts={setSavedTexts}
       />
-    </div>
+    </VFContainer>
   ) : null;
 }

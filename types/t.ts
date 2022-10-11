@@ -1,4 +1,6 @@
 export namespace custom {
+  export type LoginType = 'login' | 'signup';
+
   export type SavedPoint = {
     x: number; // in world units
     y: number; // in world units
